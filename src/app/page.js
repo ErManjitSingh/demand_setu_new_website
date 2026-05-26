@@ -336,20 +336,6 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="mt-12 overflow-hidden rounded-3xl bg-gradient-to-r from-brand via-orange-500 to-amber-500 p-8 text-center text-white shadow-2xl shadow-brand/30 sm:p-12">
-          <h2 className="text-2xl font-extrabold sm:text-3xl">
-            Ready for your next escape?
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-orange-50 sm:text-base">
-            Join 50,000+ travellers who book smarter with Demand Setu.
-          </p>
-          <Link
-            href="/listings"
-            className="mt-6 inline-flex rounded-full bg-white px-8 py-3.5 text-sm font-bold text-brand-dark shadow-xl transition hover:bg-orange-50"
-          >
-            Start exploring
-          </Link>
-        </div>
       </section>
     </>
   );
