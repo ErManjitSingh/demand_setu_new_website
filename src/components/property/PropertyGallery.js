@@ -5,20 +5,25 @@ import Link from "next/link";
 import { useState } from "react";
 
 export default function PropertyGallery({ title, images }) {
-  const gallery = images?.length ? images : [];
+  const gallery = (images?.length ? images : []).slice(0, 3);
   const [active, setActive] = useState(0);
   const [lightbox, setLightbox] = useState(false);
 
   if (!gallery.length) return null;
 
-  const main = gallery[active] ?? gallery[0];
+  const imgs = [
+    gallery[0],
+    gallery[1] ?? gallery[0],
+    gallery[2] ?? gallery[0],
+  ];
+  const main = imgs[active] ?? imgs[0];
 
   return (
     <>
       {/* Desktop gallery */}
       <section className="relative hidden bg-stone-100 sm:block">
         <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
-          <div className="grid h-[min(52vh,480px)] grid-cols-4 grid-rows-2 gap-2">
+          <div className="grid h-[min(52vh,480px)] grid-cols-3 grid-rows-2 gap-2">
             <button
               type="button"
               onClick={() => {
@@ -28,7 +33,7 @@ export default function PropertyGallery({ title, images }) {
               className="relative col-span-2 row-span-2 overflow-hidden rounded-2xl bg-stone-200 ring-1 ring-stone-900/5"
             >
               <Image
-                src={gallery[0]}
+                src={imgs[0]}
                 alt={title}
                 fill
                 priority
@@ -36,34 +41,25 @@ export default function PropertyGallery({ title, images }) {
                 sizes="(max-width: 1200px) 50vw, 600px"
               />
             </button>
-            {[1, 2, 3, 4].map((idx) => {
-              const src = gallery[idx % gallery.length];
-              const isMore = idx === 4 && gallery.length > 5;
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => {
-                    setActive(idx % gallery.length);
-                    setLightbox(true);
-                  }}
-                  className="relative min-h-0 overflow-hidden rounded-2xl bg-stone-200 ring-1 ring-stone-900/5"
-                >
-                  <Image
-                    src={src}
-                    alt={`${title} photo ${idx + 1}`}
-                    fill
-                    className="object-cover transition hover:scale-105"
-                    sizes="25vw"
-                  />
-                  {isMore && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-sm font-bold text-white backdrop-blur-[2px]">
-                      +{gallery.length - 5} photos
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+            {[1, 2].map((idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => {
+                  setActive(idx);
+                  setLightbox(true);
+                }}
+                className="relative min-h-0 overflow-hidden rounded-2xl bg-stone-200 ring-1 ring-stone-900/5"
+              >
+                <Image
+                  src={imgs[idx]}
+                  alt={`${title} photo ${idx + 1}`}
+                  fill
+                  className="object-cover transition hover:scale-105"
+                  sizes="25vw"
+                />
+              </button>
+            ))}
           </div>
         </div>
 
@@ -79,7 +75,7 @@ export default function PropertyGallery({ title, images }) {
           onClick={() => setLightbox(true)}
           className="absolute bottom-6 right-6 z-10 rounded-full bg-white px-4 py-2.5 text-sm font-bold shadow-lg ring-1 ring-stone-200/80 transition hover:bg-stone-50 sm:right-10"
         >
-          View all {gallery.length} photos
+          View photos
         </button>
       </section>
 

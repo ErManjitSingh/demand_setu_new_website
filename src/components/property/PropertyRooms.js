@@ -186,21 +186,21 @@ export default function PropertyRooms({ rooms }) {
                     </div>
                   </div>
 
-                  <div className="mt-2 rounded-xl bg-stone-900 p-2.5 text-white sm:mt-3 sm:rounded-2xl sm:p-4">
-                    <p className="text-[9px] text-stone-400 sm:text-[10px]">
+                  <div className="mt-2 rounded-xl bg-gradient-to-r from-brand to-orange-500 p-2.5 text-white sm:mt-3 sm:rounded-2xl sm:p-4">
+                    <p className="text-[9px] text-orange-100 sm:text-[10px]">
                       {selectedPlan?.short} · {room.available} left
                     </p>
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <p className="text-base font-extrabold sm:text-xl md:text-2xl">
                         {formatPrice(displayPrice)}
-                        <span className="text-[10px] font-medium text-stone-400 sm:text-sm">
+                        <span className="text-[10px] font-medium text-orange-100 sm:text-sm">
                           {" "}
                           /nt
                         </span>
                       </p>
                       <button
                         type="button"
-                        className="shrink-0 rounded-lg bg-gradient-to-r from-brand to-orange-500 px-3 py-2 text-[10px] font-extrabold text-white shadow-md sm:rounded-xl sm:px-5 sm:py-2.5 sm:text-sm"
+                        className="shrink-0 rounded-lg bg-white px-3 py-2 text-[10px] font-extrabold text-brand shadow-md sm:rounded-xl sm:px-5 sm:py-2.5 sm:text-sm"
                       >
                         Select
                       </button>

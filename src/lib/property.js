@@ -267,5 +267,5 @@ export function getPropertyGallery(listing) {
   const extras = [ROOM_IMAGES.deluxe, ROOM_IMAGES.suite, ROOM_IMAGES.villa, ROOM_IMAGES.beach].filter(
     (src) => !base.includes(src)
   );
-  return [...base, ...extras].slice(0, 6);
+  return [...base, ...extras].slice(0, 3);
 }
