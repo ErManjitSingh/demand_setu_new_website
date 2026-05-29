@@ -17,8 +17,8 @@ const TRUST_ITEMS = [
 
 export default function ListingsHero({ category, cover, description }) {
   return (
-    <section className="relative overflow-hidden bg-stone-950">
-      <div className="absolute inset-0">
+    <section className="relative z-30 bg-stone-950">
+      <div className="absolute inset-0 overflow-hidden">
         <Image
           src={cover}
           alt=""
@@ -45,7 +45,7 @@ export default function ListingsHero({ category, cover, description }) {
               "Hotels, villas & unique stays for unforgettable memories."}
           </p>
 
-          <div className="mx-auto mt-8 max-w-4xl sm:mt-10">
+          <div className="relative z-20 mx-auto mt-8 max-w-4xl overflow-visible sm:mt-10">
             <ListingsHeroSearch category={category} />
           </div>
 

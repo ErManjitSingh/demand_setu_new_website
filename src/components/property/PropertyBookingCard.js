@@ -1,8 +1,27 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import { formatPrice } from "@/lib/listings";
+import { addDays, nightsBetween, startOfDay } from "@/lib/dates";
+import BookingDateRangePicker from "@/components/booking/BookingDateRangePicker";
+import GuestsRoomsPicker from "@/components/booking/GuestsRoomsPicker";
 
 export default function PropertyBookingCard({ listing, selectedRoomPrice }) {
   const nightly = selectedRoomPrice ?? listing.price;
-  const nights = 5;
+  const today = startOfDay(new Date());
+
+  const [checkIn, setCheckIn] = useState(() => addDays(today, 7));
+  const [checkOut, setCheckOut] = useState(() => addDays(today, 12));
+  const [guests, setGuests] = useState({
+    adults: Math.min(listing.guests, 2) || 2,
+    children: 0,
+    rooms: 1,
+  });
+
+  const nights = useMemo(
+    () => nightsBetween(checkIn, checkOut, 5),
+    [checkIn, checkOut]
+  );
   const cleaning = 800;
   const service = Math.round(nightly * 0.12);
   const total = nightly * nights + cleaning + service;
@@ -15,7 +34,6 @@ export default function PropertyBookingCard({ listing, selectedRoomPrice }) {
 
   return (
     <div className="overflow-hidden rounded-3xl bg-white shadow-[0_12px_48px_rgba(28,25,23,0.14)] ring-1 ring-stone-200/90">
-      {/* Header strip */}
       <div className="border-b border-orange-100/80 bg-gradient-to-r from-brand-muted via-orange-50 to-amber-50 px-5 py-3.5">
         <p className="text-[11px] font-bold uppercase tracking-widest text-brand">
           Book your stay
@@ -24,7 +42,6 @@ export default function PropertyBookingCard({ listing, selectedRoomPrice }) {
       </div>
 
       <div className="p-5">
-        {/* Price + rating */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -53,17 +70,22 @@ export default function PropertyBookingCard({ listing, selectedRoomPrice }) {
           </div>
         </div>
 
-        {/* Dates & guests */}
         <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-stone-50/50">
-          <div className="grid grid-cols-2 divide-x divide-stone-200">
-            <DateCell label="Check-in" value="Add date" icon={<CalendarIcon />} />
-            <DateCell label="Check-out" value="Add date" icon={<CalendarIcon />} />
-          </div>
+          <BookingDateRangePicker
+            variant="split"
+            checkIn={checkIn}
+            checkOut={checkOut}
+            onChange={({ checkIn: ci, checkOut: co }) => {
+              if (ci !== undefined) setCheckIn(ci);
+              if (co !== undefined) setCheckOut(co);
+            }}
+          />
           <div className="border-t border-stone-200">
-            <DateCell
-              label="Guests"
-              value={`${listing.guests} guests`}
-              icon={<GuestsIcon />}
+            <GuestsRoomsPicker
+              value={guests}
+              onChange={setGuests}
+              maxGuests={listing.guests}
+              label="Guests & Rooms"
             />
           </div>
         </div>
@@ -79,14 +101,13 @@ export default function PropertyBookingCard({ listing, selectedRoomPrice }) {
         </button>
         <p className="mt-2.5 text-center text-xs text-muted">You won&apos;t be charged yet</p>
 
-        {/* Price breakdown */}
         <div className="mt-5 rounded-2xl bg-stone-50 p-4 ring-1 ring-stone-100">
           <p className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
             Price details
           </p>
           <ul className="mt-3 space-y-2.5 text-sm">
             <PriceRow
-              label={`${formatPrice(nightly)} × ${nights} nights`}
+              label={`${formatPrice(nightly)} × ${nights} night${nights !== 1 ? "s" : ""}`}
               value={formatPrice(nightly * nights)}
             />
             <PriceRow label="Cleaning fee" value={formatPrice(cleaning)} />
@@ -98,12 +119,8 @@ export default function PropertyBookingCard({ listing, selectedRoomPrice }) {
           </div>
         </div>
 
-        {/* Trust */}
         <ul className="mt-4 space-y-2">
-          {[
-            "Free cancellation up to 48 hours",
-            "Best price guarantee",
-          ].map((text) => (
+          {["Free cancellation up to 48 hours", "Best price guarantee"].map((text) => (
             <li
               key={text}
               className="flex items-center gap-2.5 rounded-xl bg-emerald-50/80 px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-100"
@@ -120,46 +137,11 @@ export default function PropertyBookingCard({ listing, selectedRoomPrice }) {
   );
 }
 
-function DateCell({ label, value, icon }) {
-  return (
-    <button
-      type="button"
-      className="flex w-full items-start gap-2.5 px-4 py-3.5 text-left transition hover:bg-white"
-    >
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-muted text-brand">
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[10px] font-bold uppercase tracking-wide text-brand">
-          {label}
-        </span>
-        <span className="mt-0.5 block text-sm font-bold text-foreground">{value}</span>
-      </span>
-    </button>
-  );
-}
-
 function PriceRow({ label, value }) {
   return (
     <li className="flex items-center justify-between gap-2">
       <span className="text-muted">{label}</span>
       <span className="shrink-0 font-semibold text-foreground">{value}</span>
     </li>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5a2.25 2.25 0 012.25 2.25V18.75M3 18.75h18" />
-    </svg>
-  );
-}
-
-function GuestsIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-    </svg>
   );
 }

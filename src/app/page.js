@@ -19,11 +19,13 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className="mesh-hero pattern-dots relative overflow-hidden">
-        {/* Darken left side so text always reads clearly */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-orange-950/50 via-orange-900/20 to-transparent" />
-        <div className="pointer-events-none absolute -right-32 top-10 h-96 w-96 rounded-full bg-amber-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute -left-20 bottom-0 h-72 w-72 rounded-full bg-orange-950/50 blur-3xl" />
+      <section className="mesh-hero pattern-dots relative z-30">
+        {/* Background layers — clipped separately so search dropdowns are not cut off */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-orange-950/50 via-orange-900/20 to-transparent" />
+          <div className="absolute -right-32 top-10 h-96 w-96 rounded-full bg-amber-400/20 blur-3xl" />
+          <div className="absolute -left-20 bottom-0 h-72 w-72 rounded-full bg-orange-950/50 blur-3xl" />
+        </div>
 
         <div className="relative mx-auto max-w-6xl px-4 pb-8 pt-10 sm:px-6 sm:pb-12 sm:pt-14">
           <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
@@ -109,14 +111,14 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="relative z-10 mt-10 sm:mt-12">
+          <div className="relative z-20 mt-10 overflow-visible pb-4 sm:mt-12 sm:pb-6">
             <SearchBar elevated />
           </div>
         </div>
       </section>
 
       {/* Marquee trust */}
-      <div className="overflow-hidden border-y border-border bg-white py-3">
+      <div className="relative z-10 overflow-hidden border-y border-border bg-white py-3">
         <div className="animate-marquee flex w-max gap-12 whitespace-nowrap px-4 text-sm font-semibold text-stone-500">
           {[...Array(2)].map((_, set) => (
             <span key={set} className="flex gap-12">

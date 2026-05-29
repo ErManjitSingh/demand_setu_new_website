@@ -17,10 +17,10 @@ export default function PropertyMobileBar({ listing, price }) {
             </p>
           </div>
           <a
-            href="#rooms"
-            className="shrink-0 rounded-2xl bg-gradient-to-r from-brand to-orange-500 px-6 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand/30"
+            href="#book"
+            className="shrink-0 rounded-2xl bg-gradient-to-r from-brand to-orange-500 px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand/30"
           >
-            Choose room
+            Reserve
           </a>
         </div>
       </div>

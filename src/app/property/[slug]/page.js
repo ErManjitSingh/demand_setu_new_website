@@ -116,6 +116,17 @@ export default async function PropertyPage({ params }) {
             {/* Rooms */}
             <PropertyRooms rooms={rooms} />
 
+            {/* Mobile booking — full card (dates, guests, price breakdown) */}
+            <section id="book" className="mt-10 scroll-mt-24 lg:hidden">
+              <h2 className="text-lg font-extrabold sm:text-xl">Book your stay</h2>
+              <p className="mt-1 text-sm text-muted">
+                Select dates, guests & rooms — see full price before you reserve.
+              </p>
+              <div className="mt-4">
+                <PropertyBookingCard listing={listing} selectedRoomPrice={defaultRoomPrice} />
+              </div>
+            </section>
+
             {/* About */}
             <div className="mt-10 rounded-3xl border border-border/80 bg-white p-5 shadow-sm sm:p-6">
               <h2 className="text-lg font-extrabold sm:text-xl">About this stay</h2>
