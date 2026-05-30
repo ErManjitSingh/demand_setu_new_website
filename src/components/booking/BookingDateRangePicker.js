@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   formatDateRange,
   formatShortDate,
@@ -9,6 +9,7 @@ import {
   isSameDay,
   startOfDay,
 } from "@/lib/dates";
+import MobilePickerSheet, { useIsMobile } from "@/components/booking/MobilePickerSheet";
 
 export default function BookingDateRangePicker({
   checkIn,
@@ -20,27 +21,36 @@ export default function BookingDateRangePicker({
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState("in");
   const ref = useRef(null);
+  const isMobile = useIsMobile();
   const today = startOfDay(new Date());
   const [viewMonth, setViewMonth] = useState(() => {
     const d = checkIn ?? today;
     return { year: d.getFullYear(), month: d.getMonth() };
   });
 
-  const nextMonth = useMemo(() => {
-    const m = viewMonth.month + 1;
-    return m > 11
-      ? { year: viewMonth.year + 1, month: 0 }
-      : { year: viewMonth.year, month: m };
-  }, [viewMonth]);
+  const monthLabel = new Date(viewMonth.year, viewMonth.month, 1).toLocaleDateString(
+    "en-IN",
+    { month: "long", year: "numeric" }
+  );
+
+  const prevMonth = () =>
+    setViewMonth((v) =>
+      v.month === 0 ? { year: v.year - 1, month: 11 } : { year: v.year, month: v.month - 1 }
+    );
+
+  const nextMonthNav = () =>
+    setViewMonth((v) =>
+      v.month === 11 ? { year: v.year + 1, month: 0 } : { year: v.year, month: v.month + 1 }
+    );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || isMobile) return;
     const onDoc = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+  }, [open, isMobile]);
 
   const pickDay = (day) => {
     if (!day || day < today) return;
@@ -60,29 +70,44 @@ export default function BookingDateRangePicker({
   };
 
   const label = formatDateRange(checkIn, checkOut);
+  const sheetTitle = phase === "out" ? "Select checkout" : "Select check-in";
 
-  const renderMonth = (year, month) => {
+  const renderMonthGrid = (year, month, { compact = false, showTitle = true } = {}) => {
     const days = getMonthDays(year, month);
     const title = new Date(year, month, 1).toLocaleDateString("en-IN", {
       month: "long",
       year: "numeric",
     });
+    const cellClass = compact
+      ? "h-7 w-7 text-[11px] rounded-md"
+      : "h-10 w-full text-sm rounded-xl sm:h-8 sm:text-xs sm:rounded-lg";
+    const weekdayClass = compact
+      ? "py-0.5 text-[9px]"
+      : "py-1.5 text-[11px] sm:py-1";
+
     return (
-      <div key={`${year}-${month}`} className="min-w-[240px] flex-1">
-        <p className="mb-2 text-center text-xs font-bold text-foreground">{title}</p>
-        <div className="grid grid-cols-7 gap-0.5 text-center text-[10px] font-semibold text-muted">
+      <div key={`${year}-${month}`} className="min-w-0">
+        {showTitle && (
+          <p
+            className={`text-center font-bold text-foreground ${
+              compact ? "mb-1.5 text-xs" : "mb-3 text-sm"
+            }`}
+          >
+            {title}
+          </p>
+        )}
+        <div
+          className={`grid grid-cols-7 gap-0.5 text-center font-semibold text-muted ${weekdayClass}`}
+        >
           {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-            <span key={d} className="py-1">
-              {d}
-            </span>
+            <span key={d}>{d}</span>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-0.5">
+        <div className={`grid grid-cols-7 ${compact ? "gap-0.5" : "gap-1"}`}>
           {days.map((day, i) => {
-            if (!day) return <span key={`e-${i}`} />;
+            if (!day) return <span key={`e-${i}`} className={compact ? "h-7 w-7" : "h-8"} />;
             const disabled = day < today;
-            const selected =
-              isSameDay(day, checkIn) || isSameDay(day, checkOut);
+            const selected = isSameDay(day, checkIn) || isSameDay(day, checkOut);
             const inRange = isInRange(day, checkIn, checkOut);
             return (
               <button
@@ -90,7 +115,7 @@ export default function BookingDateRangePicker({
                 type="button"
                 disabled={disabled}
                 onClick={() => pickDay(day)}
-                className={`h-8 rounded-lg text-xs font-semibold transition ${
+                className={`flex items-center justify-center font-semibold transition ${cellClass} ${
                   disabled
                     ? "cursor-not-allowed text-stone-300"
                     : selected
@@ -109,65 +134,71 @@ export default function BookingDateRangePicker({
     );
   };
 
-  const panel = open && (
-    <div className="absolute left-0 right-0 z-[200] mt-2 rounded-2xl border border-stone-200 bg-white p-4 shadow-2xl sm:left-auto sm:right-0 sm:w-[min(520px,95vw)]">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          aria-label="Previous month"
-          onClick={() =>
-            setViewMonth((v) =>
-              v.month === 0
-                ? { year: v.year - 1, month: 11 }
-                : { year: v.year, month: v.month - 1 }
-            )
-          }
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand text-white shadow-md transition hover:bg-brand-dark active:scale-95"
-        >
-          <ChevronIcon dir="left" />
-        </button>
-        <p className="min-w-0 flex-1 text-center text-xs font-bold text-foreground sm:text-sm">
-          {phase === "out" ? "Select checkout" : "Select check-in"}
-        </p>
-        <button
-          type="button"
-          aria-label="Next month"
-          onClick={() =>
-            setViewMonth((v) =>
-              v.month === 11
-                ? { year: v.year + 1, month: 0 }
-                : { year: v.year, month: v.month + 1 }
-            )
-          }
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand text-white shadow-md transition hover:bg-brand-dark active:scale-95"
-        >
-          <ChevronIcon dir="right" />
-        </button>
-      </div>
-      <div className="flex flex-col gap-4 sm:flex-row">
-        {renderMonth(viewMonth.year, viewMonth.month)}
-        <div className="hidden sm:block sm:flex-1">{renderMonth(nextMonth.year, nextMonth.month)}</div>
-      </div>
-      <div className="mt-3 flex justify-between border-t border-stone-100 pt-3">
-        <button
-          type="button"
-          className="text-xs font-semibold text-muted hover:text-brand"
-          onClick={() => {
-            onChange({ checkIn: null, checkOut: null });
-            setPhase("in");
-          }}
-        >
-          Clear dates
-        </button>
-        <button
-          type="button"
-          className="text-xs font-bold text-brand"
-          onClick={() => setOpen(false)}
-        >
-          Done
-        </button>
-      </div>
+  const monthNavRow = (compact = false) => (
+    <div
+      className={`flex items-center justify-between ${
+        compact ? "mb-2" : "mb-4"
+      }`}
+    >
+      <NavButton compact={compact} dir="left" onClick={prevMonth} />
+      <p
+        className={`min-w-0 flex-1 text-center font-bold text-foreground ${
+          compact ? "px-1 text-xs" : "text-sm"
+        }`}
+      >
+        {monthLabel}
+      </p>
+      <NavButton compact={compact} dir="right" onClick={nextMonthNav} />
     </div>
+  );
+
+  const footer = (compact = false) => (
+    <div
+      className={`flex items-center justify-between border-t border-stone-100 ${
+        compact ? "mt-2 pt-2" : "mt-4 pt-4"
+      }`}
+    >
+      <button
+        type="button"
+        className={`font-semibold text-muted hover:text-brand ${
+          compact ? "text-[11px]" : "text-sm"
+        }`}
+        onClick={() => {
+          onChange({ checkIn: null, checkOut: null });
+          setPhase("in");
+        }}
+      >
+        Clear
+      </button>
+      <button
+        type="button"
+        className={`font-bold text-white bg-brand hover:brightness-105 ${
+          compact ? "rounded-lg px-3 py-1 text-[11px]" : "rounded-xl px-5 py-2 text-sm"
+        }`}
+        onClick={() => setOpen(false)}
+      >
+        Done
+      </button>
+    </div>
+  );
+
+  const desktopPanel = open && !isMobile && (
+    <div className="absolute right-0 top-full z-[250] mt-2 w-[272px] rounded-xl border border-stone-200 bg-white p-3 shadow-xl ring-1 ring-stone-900/5">
+      <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-wide text-brand">
+        {sheetTitle}
+      </p>
+      {monthNavRow(true)}
+      {renderMonthGrid(viewMonth.year, viewMonth.month, { compact: true, showTitle: false })}
+      {footer(true)}
+    </div>
+  );
+
+  const mobileSheet = (
+    <MobilePickerSheet open={open && isMobile} onClose={() => setOpen(false)} title={sheetTitle}>
+      {monthNavRow(false)}
+      {renderMonthGrid(viewMonth.year, viewMonth.month, { compact: false, showTitle: false })}
+      <div className="pb-2">{footer(false)}</div>
+    </MobilePickerSheet>
   );
 
   if (variant === "split") {
@@ -211,7 +242,8 @@ export default function BookingDateRangePicker({
             </span>
           </button>
         </div>
-        {panel}
+        {desktopPanel}
+        {mobileSheet}
       </div>
     );
   }
@@ -221,11 +253,10 @@ export default function BookingDateRangePicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-start gap-2.5 px-4 py-3.5 text-left transition hover:bg-white sm:px-4 sm:py-3"
+        className="flex w-full items-start gap-2.5 rounded-2xl px-4 py-3.5 text-left transition hover:bg-stone-50 sm:rounded-none sm:px-4 sm:py-3 sm:hover:bg-white"
+        aria-expanded={open}
       >
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-muted text-brand">
-          <CalendarIcon />
-        </span>
+        <CalendarIcon />
         <span className="min-w-0">
           <span className="block text-[10px] font-bold uppercase tracking-wide text-brand">
             Check-in — Check-out
@@ -233,19 +264,35 @@ export default function BookingDateRangePicker({
           <span className="mt-0.5 block text-sm font-bold text-foreground">{label}</span>
         </span>
       </button>
-      {panel}
+      {desktopPanel}
+      {mobileSheet}
     </div>
   );
 }
 
-function ChevronIcon({ dir }) {
+function NavButton({ dir, onClick, compact }) {
+  return (
+    <button
+      type="button"
+      aria-label={dir === "left" ? "Previous month" : "Next month"}
+      onClick={onClick}
+      className={`flex shrink-0 items-center justify-center rounded-lg border border-stone-200 text-brand transition hover:border-brand/30 hover:bg-brand-muted active:scale-95 ${
+        compact ? "h-7 w-7" : "h-10 w-10"
+      }`}
+    >
+      <ChevronIcon dir={dir} compact={compact} />
+    </button>
+  );
+}
+
+function ChevronIcon({ dir, compact }) {
   return (
     <svg
-      className="h-5 w-5 shrink-0"
+      className={compact ? "h-3.5 w-3.5" : "h-5 w-5"}
       fill="none"
       viewBox="0 0 24 24"
-      stroke="#ffffff"
-      strokeWidth={3}
+      stroke="currentColor"
+      strokeWidth={2.5}
       aria-hidden
     >
       {dir === "left" ? (
@@ -261,7 +308,7 @@ function CalendarIcon() {
   return (
     <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-muted text-brand">
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5a2.25 2.25 0 012.25 2.25V18.75M3 18.75h18" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 012.25 2.25V18.75M3 18.75h18" />
       </svg>
     </span>
   );

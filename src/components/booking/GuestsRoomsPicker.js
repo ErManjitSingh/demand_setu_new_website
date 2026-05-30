@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import MobilePickerSheet, { useIsMobile } from "@/components/booking/MobilePickerSheet";
 
 export function formatGuestsRoomsLabel({ adults, children, rooms }) {
   const parts = [];
@@ -20,16 +21,17 @@ export default function GuestsRoomsPicker({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const isMobile = useIsMobile();
   const { adults, children, rooms } = value;
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || isMobile) return;
     const onDoc = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+  }, [open, isMobile]);
 
   const setAdults = (n) =>
     onChange({ ...value, adults: Math.min(maxGuests, Math.max(1, n)) });
@@ -40,14 +42,51 @@ export default function GuestsRoomsPicker({
 
   const display = formatGuestsRoomsLabel(value);
 
+  const panelContent = (
+    <>
+      <CounterRow
+        label="Adults"
+        hint="Ages 13+"
+        count={adults}
+        onDec={() => setAdults(adults - 1)}
+        onInc={() => setAdults(adults + 1)}
+        min={1}
+      />
+      <CounterRow
+        label="Children"
+        hint="Ages 0–12"
+        count={children}
+        onDec={() => setChildren(children - 1)}
+        onInc={() => setChildren(children + 1)}
+        min={0}
+      />
+      <CounterRow
+        label="Rooms"
+        hint="Number of rooms"
+        count={rooms}
+        onDec={() => setRooms(rooms - 1)}
+        onInc={() => setRooms(rooms + 1)}
+        min={1}
+      />
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="mt-4 w-full rounded-xl bg-brand py-3 text-sm font-bold text-white"
+      >
+        Done
+      </button>
+    </>
+  );
+
   return (
     <div ref={ref} className={`relative ${className}`}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`flex w-full items-start gap-2.5 text-left transition hover:bg-white ${
+        className={`flex w-full items-start gap-2.5 rounded-2xl text-left transition hover:bg-stone-50 sm:rounded-none sm:hover:bg-white ${
           compact ? "px-4 py-3.5" : "px-4 py-3 sm:px-4 sm:py-3"
         }`}
+        aria-expanded={open}
       >
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-muted text-brand">
           <GuestsIcon />
@@ -69,41 +108,15 @@ export default function GuestsRoomsPicker({
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute left-0 right-0 z-[200] mt-2 rounded-2xl border border-stone-200 bg-white p-4 shadow-2xl sm:min-w-[280px]">
-          <CounterRow
-            label="Adults"
-            hint="Ages 13+"
-            count={adults}
-            onDec={() => setAdults(adults - 1)}
-            onInc={() => setAdults(adults + 1)}
-            min={1}
-          />
-          <CounterRow
-            label="Children"
-            hint="Ages 0–12"
-            count={children}
-            onDec={() => setChildren(children - 1)}
-            onInc={() => setChildren(children + 1)}
-            min={0}
-          />
-          <CounterRow
-            label="Rooms"
-            hint="Number of rooms"
-            count={rooms}
-            onDec={() => setRooms(rooms - 1)}
-            onInc={() => setRooms(rooms + 1)}
-            min={1}
-          />
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="mt-3 w-full rounded-xl bg-brand py-2.5 text-sm font-bold text-white"
-          >
-            Done
-          </button>
+      {open && !isMobile && (
+        <div className="absolute left-0 right-0 top-full z-[250] mt-2 rounded-2xl border border-stone-200 bg-white p-4 shadow-2xl sm:min-w-[280px]">
+          {panelContent}
         </div>
       )}
+
+      <MobilePickerSheet open={open && isMobile} onClose={() => setOpen(false)} title={label}>
+        {panelContent}
+      </MobilePickerSheet>
     </div>
   );
 }
@@ -120,7 +133,7 @@ function CounterRow({ label, hint, count, onDec, onInc, min }) {
           type="button"
           onClick={onDec}
           disabled={count <= min}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-stone-200 text-lg font-bold disabled:opacity-40"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 text-lg font-bold disabled:opacity-40"
         >
           −
         </button>
@@ -128,7 +141,7 @@ function CounterRow({ label, hint, count, onDec, onInc, min }) {
         <button
           type="button"
           onClick={onInc}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-brand bg-brand-muted text-lg font-bold text-brand"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-brand bg-brand-muted text-lg font-bold text-brand"
         >
           +
         </button>
