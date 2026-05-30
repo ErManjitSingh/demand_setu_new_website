@@ -21,7 +21,7 @@ export default function ListingsHeroSearch({ category }) {
 
   return (
     <div className="relative z-20 w-full overflow-visible rounded-[2rem] bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.25)] ring-1 ring-white/80 sm:rounded-full sm:p-1.5">
-      <div className="flex flex-col overflow-visible sm:flex-row sm:items-stretch">
+      <div className="flex flex-col overflow-visible sm:flex-row sm:items-center">
         <label className="flex flex-1 cursor-pointer items-center gap-3 px-4 py-3.5 transition hover:bg-stone-50 sm:rounded-l-full sm:px-5 sm:py-4">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-muted text-brand">
             <PinIcon />
@@ -38,26 +38,25 @@ export default function ListingsHeroSearch({ category }) {
           </span>
         </label>
         <Divider />
-        <div className="relative z-30 flex-1 overflow-visible">
+        <div className="relative z-30 min-w-0 flex-1 overflow-visible">
           <BookingDateRangePicker
             variant="combined"
+            heroLayout
             checkIn={checkIn}
             checkOut={checkOut}
             onChange={({ checkIn: ci, checkOut: co }) => {
               if (ci !== undefined) setCheckIn(ci);
               if (co !== undefined) setCheckOut(co);
             }}
-            className="[&_button]:sm:px-5 [&_button]:sm:py-4"
           />
         </div>
         <Divider />
-        <div className="relative z-30 flex-1 overflow-visible">
+        <div className="relative z-30 min-w-0 flex-1 overflow-visible">
           <GuestsRoomsPicker
             value={guests}
             onChange={setGuests}
             label="Guests & Rooms"
-            compact
-            className="[&_button]:sm:px-5 [&_button]:sm:py-4"
+            heroLayout
           />
         </div>
         <Link

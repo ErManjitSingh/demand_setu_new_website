@@ -59,7 +59,7 @@ export default function SearchBar({
   return (
     <div className={`relative z-20 overflow-visible ${shellClass}`}>
       <div className="grid gap-2 overflow-visible sm:grid-cols-[1.3fr_1fr_1fr_auto] sm:gap-0 sm:rounded-2xl sm:bg-stone-50/90 sm:p-1">
-        <label className="group flex gap-3 rounded-2xl border border-transparent bg-white px-4 py-3.5 shadow-sm transition hover:border-brand/15 hover:bg-white hover:shadow-md sm:rounded-l-xl sm:border-0 sm:bg-transparent sm:py-3 sm:shadow-none">
+        <label className="group flex items-center gap-3 rounded-2xl border border-transparent bg-white px-4 py-3.5 shadow-sm transition hover:border-brand/15 hover:bg-white hover:shadow-md sm:rounded-l-xl sm:border-0 sm:bg-transparent sm:py-3 sm:shadow-none">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-muted to-orange-50 text-brand ring-1 ring-brand/10">
             <PinIcon />
           </span>

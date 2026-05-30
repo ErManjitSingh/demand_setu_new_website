@@ -17,6 +17,7 @@ export default function BookingDateRangePicker({
   onChange,
   variant = "combined",
   className = "",
+  heroLayout = false,
 }) {
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState("in");
@@ -71,6 +72,10 @@ export default function BookingDateRangePicker({
 
   const label = formatDateRange(checkIn, checkOut);
   const sheetTitle = phase === "out" ? "Select checkout" : "Select check-in";
+
+  const triggerClass = heroLayout
+    ? "flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-stone-50 sm:rounded-none sm:px-5 sm:py-4"
+    : "flex w-full items-center gap-2.5 rounded-2xl px-4 py-3.5 text-left transition hover:bg-stone-50 sm:rounded-none sm:px-4 sm:py-3 sm:hover:bg-white";
 
   const renderMonthGrid = (year, month, { compact = false, showTitle = true } = {}) => {
     const days = getMonthDays(year, month);
@@ -211,9 +216,9 @@ export default function BookingDateRangePicker({
               setPhase("in");
               setOpen(true);
             }}
-            className="flex w-full items-start gap-2.5 px-4 py-3.5 text-left transition hover:bg-white"
+            className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left transition hover:bg-white"
           >
-            <CalendarIcon />
+            <CalendarIcon heroLayout={heroLayout} />
             <span>
               <span className="block text-[10px] font-bold uppercase tracking-wide text-brand">
                 Check-in
@@ -229,9 +234,9 @@ export default function BookingDateRangePicker({
               setPhase("out");
               setOpen(true);
             }}
-            className="flex w-full items-start gap-2.5 px-4 py-3.5 text-left transition hover:bg-white"
+            className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left transition hover:bg-white"
           >
-            <CalendarIcon />
+            <CalendarIcon heroLayout={heroLayout} />
             <span>
               <span className="block text-[10px] font-bold uppercase tracking-wide text-brand">
                 Check-out
@@ -253,10 +258,10 @@ export default function BookingDateRangePicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-start gap-2.5 rounded-2xl px-4 py-3.5 text-left transition hover:bg-stone-50 sm:rounded-none sm:px-4 sm:py-3 sm:hover:bg-white"
+        className={triggerClass}
         aria-expanded={open}
       >
-        <CalendarIcon />
+        <CalendarIcon heroLayout={heroLayout} />
         <span className="min-w-0">
           <span className="block text-[10px] font-bold uppercase tracking-wide text-brand">
             Check-in — Check-out
@@ -304,9 +309,15 @@ function ChevronIcon({ dir, compact }) {
   );
 }
 
-function CalendarIcon() {
+function CalendarIcon({ heroLayout = false }) {
   return (
-    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-muted text-brand">
+    <span
+      className={`flex shrink-0 items-center justify-center bg-brand-muted text-brand ${
+        heroLayout
+          ? "h-9 w-9 rounded-full"
+          : "h-8 w-8 rounded-lg"
+      }`}
+    >
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 012.25 2.25V18.75M3 18.75h18" />
       </svg>

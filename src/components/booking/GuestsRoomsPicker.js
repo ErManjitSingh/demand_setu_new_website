@@ -18,6 +18,7 @@ export default function GuestsRoomsPicker({
   className = "",
   label = "Guests & Rooms",
   compact = false,
+  heroLayout = false,
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -41,6 +42,12 @@ export default function GuestsRoomsPicker({
     onChange({ ...value, rooms: Math.max(1, Math.min(8, n)) });
 
   const display = formatGuestsRoomsLabel(value);
+
+  const triggerClass = heroLayout
+    ? "flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-stone-50 sm:rounded-none sm:px-5 sm:py-4"
+    : `flex w-full items-center gap-2.5 rounded-2xl text-left transition hover:bg-stone-50 sm:rounded-none sm:hover:bg-white ${
+        compact ? "px-4 py-3.5" : "px-4 py-3 sm:px-4 sm:py-3"
+      }`;
 
   const panelContent = (
     <>
@@ -83,12 +90,14 @@ export default function GuestsRoomsPicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`flex w-full items-start gap-2.5 rounded-2xl text-left transition hover:bg-stone-50 sm:rounded-none sm:hover:bg-white ${
-          compact ? "px-4 py-3.5" : "px-4 py-3 sm:px-4 sm:py-3"
-        }`}
+        className={triggerClass}
         aria-expanded={open}
       >
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-muted text-brand">
+        <span
+          className={`flex shrink-0 items-center justify-center bg-brand-muted text-brand ${
+            heroLayout ? "h-9 w-9 rounded-full" : "h-8 w-8 rounded-lg"
+          }`}
+        >
           <GuestsIcon />
         </span>
         <span className="min-w-0 flex-1">
@@ -98,7 +107,7 @@ export default function GuestsRoomsPicker({
           <span className="mt-0.5 block text-sm font-bold text-foreground">{display}</span>
         </span>
         <svg
-          className={`mt-2 h-4 w-4 shrink-0 text-stone-400 transition ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-stone-400 transition ${open ? "rotate-180" : ""}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

@@ -1,56 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { LogoLink } from "@/components/Logo";
-
-export default function Header() {
-  return (
-    <header className="sticky top-0 z-50 ">
-   
-
-      <div className=" glass border-b border-white/60 shadow-sm shadow-stone-200/40 ">
-        <div className=" mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6">
-          <LogoLink size="md" className="max-w-[140px] sm:max-w-[180px]" />
-
-          <nav className="hidden items-center gap-0.5 rounded-full border border-border/80 bg-stone-50/80 p-1 lg:flex">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="rounded-full px-3.5 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-brand-dark hover:shadow-sm"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <a
-              href="tel:+918353056000"
-              className="flex items-center gap-2 rounded-full border border-border/80 bg-white/90 px-2.5 py-1.5 transition hover:border-brand/40 sm:px-3.5 sm:py-2"
-            >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-muted text-brand sm:h-9 sm:w-9">
-                <PhoneIcon />
-              </span>
-              <span className="min-w-0 text-left leading-tight">
-                <span className="block text-[9px] font-bold uppercase tracking-wide text-muted sm:text-[10px]">
-                  Customer Service
-                </span>
-                <span className="block text-xs font-extrabold text-brand sm:text-sm">
-                  +91 8353056000
-                </span>
-              </span>
-            </a>
-            <Link
-              href="/signin"
-              className="inline-flex rounded-full border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground transition hover:border-brand/40 sm:px-5 sm:py-2.5 sm:text-sm"
-            >
-              Sign in
-            </Link>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-}
+import HeaderSearchBar from "@/components/HeaderSearchBar";
+import { getListingBySlug } from "@/lib/listings";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -59,6 +13,85 @@ const navLinks = [
   { href: "/listings?category=airbnb", label: "Airbnb" },
   { href: "/listings?category=homestay", label: "Villas" },
 ];
+
+export default function Header() {
+  const pathname = usePathname();
+  const isPropertyPage = pathname?.startsWith("/property/");
+  const slug = isPropertyPage
+    ? pathname.replace(/^\/property\//, "").split("/")[0]
+    : null;
+  const listing = slug ? getListingBySlug(slug) : null;
+  const defaultLocation = listing?.location ?? listing?.region ?? "";
+  const searchHref = listing?.category
+    ? `/listings?category=${listing.category}`
+    : "/listings";
+
+  return (
+    <header className="sticky top-0 z-50">
+      <div className="glass overflow-visible border-b border-white/60 shadow-sm shadow-stone-200/40">
+        <div className="mx-auto max-w-6xl overflow-visible px-4 sm:px-6">
+          {/* Main navbar row */}
+          <div className="flex h-14 items-center justify-between gap-3 sm:h-16">
+            <LogoLink size="md" className="max-w-[140px] sm:max-w-[180px]" />
+
+            <nav className="hidden items-center gap-0.5 rounded-full border border-border/80 bg-stone-50/80 p-1 lg:flex">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-full px-3.5 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-brand-dark hover:shadow-sm"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+
+            <HeaderActions />
+          </div>
+
+          {/* Search bar — bottom of navbar (property pages) */}
+          {isPropertyPage && (
+            <div className="overflow-visible border-t border-stone-200/80 py-3">
+              <HeaderSearchBar
+                defaultLocation={defaultLocation}
+                searchHref={searchHref}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function HeaderActions() {
+  return (
+    <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+      <a
+        href="tel:+918353056000"
+        className="flex items-center gap-2 rounded-full border border-border/80 bg-white/90 px-2.5 py-1.5 transition hover:border-brand/40 sm:px-3.5 sm:py-2"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-muted text-brand sm:h-9 sm:w-9">
+          <PhoneIcon />
+        </span>
+        <span className="hidden min-w-0 text-left leading-tight sm:block">
+          <span className="block text-[9px] font-bold uppercase tracking-wide text-muted sm:text-[10px]">
+            Customer Service
+          </span>
+          <span className="block text-xs font-extrabold text-brand sm:text-sm">
+            +91 8353056000
+          </span>
+        </span>
+      </a>
+      <Link
+        href="/signin"
+        className="inline-flex rounded-full border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground transition hover:border-brand/40 sm:px-5 sm:py-2.5 sm:text-sm"
+      >
+        Sign in
+      </Link>
+    </div>
+  );
+}
 
 function PhoneIcon() {
   return (
