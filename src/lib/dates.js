@@ -10,6 +10,16 @@ export function formatDateRange(checkIn, checkOut) {
   return `${formatShortDate(checkIn)} – ${formatShortDate(checkOut)}`;
 }
 
+export function formatLongDate(date) {
+  if (!date) return "";
+  return date.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export function nightsBetween(checkIn, checkOut, fallback = 5) {
   if (!checkIn || !checkOut) return fallback;
   const diff = checkOut.getTime() - checkIn.getTime();
@@ -50,4 +60,35 @@ export function getMonthDays(year, month) {
     days.push(startOfDay(new Date(year, month, d)));
   }
   return days;
+}
+
+export function formatBookingDate(date) {
+  if (!date) return "—";
+  return date.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export function daysUntil(date) {
+  if (!date) return null;
+  const today = startOfDay(new Date());
+  const diff = Math.ceil((date.getTime() - today.getTime()) / 86400000);
+  return diff >= 0 ? diff : null;
+}
+
+export function toDateParam(date) {
+  if (!date) return "";
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function parseDateParam(str) {
+  if (!str) return null;
+  const d = startOfDay(new Date(`${str}T00:00:00`));
+  return Number.isNaN(d.getTime()) ? null : d;
 }

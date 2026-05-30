@@ -114,6 +114,7 @@ export default function BookingDateRangePicker({
       <div className="mb-3 flex items-center justify-between gap-2">
         <button
           type="button"
+          aria-label="Previous month"
           onClick={() =>
             setViewMonth((v) =>
               v.month === 0
@@ -121,15 +122,16 @@ export default function BookingDateRangePicker({
                 : { year: v.year, month: v.month - 1 }
             )
           }
-          className="rounded-lg px-2 py-1 text-sm font-bold text-muted hover:bg-stone-100"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand text-white shadow-md transition hover:bg-brand-dark active:scale-95"
         >
-          ←
+          <ChevronIcon dir="left" />
         </button>
-        <p className="text-xs font-semibold text-muted">
+        <p className="min-w-0 flex-1 text-center text-xs font-bold text-foreground sm:text-sm">
           {phase === "out" ? "Select checkout" : "Select check-in"}
         </p>
         <button
           type="button"
+          aria-label="Next month"
           onClick={() =>
             setViewMonth((v) =>
               v.month === 11
@@ -137,14 +139,14 @@ export default function BookingDateRangePicker({
                 : { year: v.year, month: v.month + 1 }
             )
           }
-          className="rounded-lg px-2 py-1 text-sm font-bold text-muted hover:bg-stone-100"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand text-white shadow-md transition hover:bg-brand-dark active:scale-95"
         >
-          →
+          <ChevronIcon dir="right" />
         </button>
       </div>
       <div className="flex flex-col gap-4 sm:flex-row">
         {renderMonth(viewMonth.year, viewMonth.month)}
-        {renderMonth(nextMonth.year, nextMonth.month)}
+        <div className="hidden sm:block sm:flex-1">{renderMonth(nextMonth.year, nextMonth.month)}</div>
       </div>
       <div className="mt-3 flex justify-between border-t border-stone-100 pt-3">
         <button
@@ -233,6 +235,25 @@ export default function BookingDateRangePicker({
       </button>
       {panel}
     </div>
+  );
+}
+
+function ChevronIcon({ dir }) {
+  return (
+    <svg
+      className="h-5 w-5 shrink-0"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="#ffffff"
+      strokeWidth={3}
+      aria-hidden
+    >
+      {dir === "left" ? (
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+      ) : (
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+      )}
+    </svg>
   );
 }
 

@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/listings";
-import { addDays, nightsBetween, startOfDay } from "@/lib/dates";
+import { addDays, nightsBetween, startOfDay, toDateParam } from "@/lib/dates";
 import BookingDateRangePicker from "@/components/booking/BookingDateRangePicker";
 import GuestsRoomsPicker from "@/components/booking/GuestsRoomsPicker";
 
 export default function PropertyBookingCard({ listing, selectedRoomPrice }) {
+  const router = useRouter();
   const nightly = selectedRoomPrice ?? listing.price;
   const today = startOfDay(new Date());
 
@@ -92,6 +94,17 @@ export default function PropertyBookingCard({ listing, selectedRoomPrice }) {
 
         <button
           type="button"
+          onClick={() => {
+            const params = new URLSearchParams({
+              checkIn: toDateParam(checkIn),
+              checkOut: toDateParam(checkOut),
+              adults: String(guests.adults),
+              children: String(guests.children),
+              rooms: String(guests.rooms),
+              price: String(nightly),
+            });
+            router.push(`/property/${listing.slug}/book?${params.toString()}`);
+          }}
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand via-orange-500 to-amber-500 py-4 text-base font-extrabold text-white shadow-lg shadow-brand/35 transition hover:brightness-105 active:scale-[0.99]"
         >
           Reserve now
