@@ -35,6 +35,51 @@ function LineItemPricing({ item, nights }) {
   );
 }
 
+function PriceTotals({
+  subtotal,
+  gst,
+  total,
+  totalBase,
+  totalExtraAdult,
+  compact = false,
+  showBaseRate = false,
+}) {
+  return (
+    <div className={`space-y-1.5 ${compact ? "text-xs" : "text-xs sm:text-sm"}`}>
+      {showBaseRate ? (
+        <>
+          <p className="flex justify-between gap-3 text-[#4a4a4a]">
+            <span>Total base rate</span>
+            <span className="shrink-0 font-semibold text-[#1a1a1a]">
+              {formatPrice(totalBase)}
+            </span>
+          </p>
+          {totalExtraAdult > 0 ? (
+            <p className="flex justify-between gap-3 text-[#4a4a4a]">
+              <span>Total extra adult</span>
+              <span className="shrink-0 font-semibold text-[#1a1a1a]">
+                {formatPrice(totalExtraAdult)}
+              </span>
+            </p>
+          ) : null}
+        </>
+      ) : null}
+      <p className="flex justify-between gap-3 text-[#4a4a4a]">
+        <span>Room charges</span>
+        <span className="shrink-0 font-semibold text-[#1a1a1a]">{formatPrice(subtotal)}</span>
+      </p>
+      <p className="flex justify-between gap-3 text-[#4a4a4a]">
+        <span>GST (5%)</span>
+        <span className="shrink-0 font-semibold text-[#1a1a1a]">{formatPrice(gst)}</span>
+      </p>
+      <p className="flex justify-between gap-3 border-t border-[#efefef] pt-2 font-bold text-[#1a1a1a]">
+        <span>Total incl. GST</span>
+        <span className={`shrink-0 ${compact ? "" : "text-base"}`}>{formatPrice(total)}</span>
+      </p>
+    </div>
+  );
+}
+
 export default function BookingPriceBreakdown({
   lineItems = [],
   subtotal,
@@ -43,6 +88,7 @@ export default function BookingPriceBreakdown({
   nights,
   compact = false,
   scrollable = true,
+  summaryOnly = false,
 }) {
   const totalExtraAdult = lineItems.reduce(
     (sum, item) => sum + (item.extraAdultSubtotal ?? 0),
@@ -69,6 +115,20 @@ export default function BookingPriceBreakdown({
           <span className="shrink-0">{formatPrice(total)}</span>
         </p>
       </div>
+    );
+  }
+
+  if (summaryOnly) {
+    return (
+      <PriceTotals
+        subtotal={subtotal}
+        gst={gst}
+        total={total}
+        totalBase={totalBase}
+        totalExtraAdult={totalExtraAdult}
+        compact={compact}
+        showBaseRate={lineItems.length > 0}
+      />
     );
   }
 

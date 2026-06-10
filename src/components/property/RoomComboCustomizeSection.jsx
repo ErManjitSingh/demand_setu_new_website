@@ -275,7 +275,6 @@ export default function RoomComboCustomizeSection({
   const [popover, setPopover] = useState(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const buttonRefs = useRef({});
   const prevFilledCountRef = useRef(0);
 
   useEffect(() => setMounted(true), []);
@@ -317,11 +316,10 @@ export default function RoomComboCustomizeSection({
     return countCategoryUsed(inventoryKey) < max;
   };
 
-  const openAddPopover = (room, mealPlan, categoryData, offer) => {
-    if (nextEmptyIndex < 0) return;
-    const key = `${room.id}-${mealPlan}`;
-    const rect = buttonRefs.current[key]?.getBoundingClientRect();
-    if (!rect) return;
+  const openAddPopover = (room, mealPlan, categoryData, offer, anchorEl) => {
+    if (nextEmptyIndex < 0 || !anchorEl) return;
+    const rect = anchorEl.getBoundingClientRect();
+    if (!rect.width && !rect.height) return;
     setPopover({
       slotIndex: nextEmptyIndex,
       slotLabel: `Room ${nextEmptyIndex + 1}`,
@@ -499,7 +497,6 @@ export default function RoomComboCustomizeSection({
             {mealPlans.map((mealPlan) => {
               const offer = buildMealPlanOffer(categoryData, mealPlan, nightDates, guests);
               const def = MEAL_PLAN_DEFS[mealPlan];
-              const btnKey = `${room.id}-${mealPlan}`;
               const addLabel =
                 nextEmptyIndex >= 0 ? `Add Room ${nextEmptyIndex + 1}` : "All rooms added";
 
@@ -524,12 +521,11 @@ export default function RoomComboCustomizeSection({
                     ) : null}
                   </div>
                   <button
-                    ref={(el) => {
-                      buttonRefs.current[btnKey] = el;
-                    }}
                     type="button"
                     disabled={!offer || !canAddCategory}
-                    onClick={() => openAddPopover(room, mealPlan, categoryData, offer)}
+                    onClick={(e) =>
+                      openAddPopover(room, mealPlan, categoryData, offer, e.currentTarget)
+                    }
                     className="inline-flex shrink-0 items-center justify-center rounded border-2 border-brand bg-white px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-brand transition hover:bg-brand-muted disabled:cursor-not-allowed disabled:border-[#d4d4d4] disabled:text-[#9b9b9b]"
                   >
                     {addLabel}

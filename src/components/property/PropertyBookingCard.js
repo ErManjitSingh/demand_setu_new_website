@@ -99,8 +99,8 @@ function PropertyBookingCardClient({
   };
 
   return (
-    <div className="overflow-hidden rounded-sm border border-[#d8d8d8] bg-white shadow-[0_1px_8px_rgba(0,0,0,0.08)]">
-      <div className="m-3 overflow-hidden rounded-sm border border-[#e8e8e8]">
+    <div className="overflow-hidden rounded-sm border border-[#d8d8d8] bg-white shadow-[0_1px_8px_rgba(0,0,0,0.08)] lg:flex lg:max-h-[calc(100vh-11rem)] lg:flex-col">
+      <div className="m-3 shrink-0 overflow-hidden rounded-sm border border-[#e8e8e8]">
         <div className="grid grid-cols-2 divide-x divide-[#e8e8e8]">
           <ReadOnlyTripField label="Check-in" value={formatShortDate(checkIn)} />
           <ReadOnlyTripField label="Check-out" value={formatShortDate(checkOut)} />
@@ -114,66 +114,74 @@ function PropertyBookingCardClient({
         </div>
       </div>
 
-      <div className="border-t border-[#e8e8e8] px-4 py-4">
-        {hasSelection ? (
-          <>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#757575]">
-              Your selection
-            </p>
-            <p className="mt-1 text-2xl font-bold text-[#1a1a1a]">
-              {formatPrice(pricing.total)}
-            </p>
-            <p className="mt-1 text-xs text-[#9b9b9b]">
-              {roomSelection.totalSelectedRooms} room
-              {roomSelection.totalSelectedRooms !== 1 ? "s" : ""} · {nights} night
-              {nights !== 1 ? "s" : ""} incl. GST
-            </p>
+      <div
+        className={`border-t border-[#e8e8e8] px-4 py-4 ${
+          hasSelection ? "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col" : ""
+        }`}
+      >
+        <div className={hasSelection ? "lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-y-contain" : ""}>
+          {hasSelection ? (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#757575]">
+                Your selection
+              </p>
+              <p className="mt-1 text-2xl font-bold text-[#1a1a1a]">
+                {formatPrice(pricing.total)}
+              </p>
+              <p className="mt-1 text-xs text-[#9b9b9b]">
+                {roomSelection.totalSelectedRooms} room
+                {roomSelection.totalSelectedRooms !== 1 ? "s" : ""} · {nights} night
+                {nights !== 1 ? "s" : ""} incl. GST
+              </p>
 
-            <div className="mt-4 rounded-sm border border-[#ececec] bg-[#fafafa] p-3">
-              <BookingPriceBreakdown
-                lineItems={lineItems}
-                subtotal={pricing.subtotal}
-                gst={pricing.gst}
-                total={pricing.total}
-                nights={nights}
-                compact
-                scrollable
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#757575]">
-              Starting @
-            </p>
-            <p className="mt-1 text-2xl font-bold text-[#1a1a1a]">
-              {formatPrice(nightly)}
-              <span className="text-sm font-normal text-[#757575]"> /night</span>
-            </p>
-            <p className="mt-1 text-xs text-[#9b9b9b]">
-              {nights} night{nights !== 1 ? "s" : ""} · Total {formatPrice(pricing.total)} incl. GST
-            </p>
-          </>
-        )}
+              <div className="mt-4 rounded-sm border border-[#ececec] bg-[#fafafa] p-3">
+                <BookingPriceBreakdown
+                  lineItems={lineItems}
+                  subtotal={pricing.subtotal}
+                  gst={pricing.gst}
+                  total={pricing.total}
+                  nights={nights}
+                  compact
+                  scrollable
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#757575]">
+                Starting @
+              </p>
+              <p className="mt-1 text-2xl font-bold text-[#1a1a1a]">
+                {formatPrice(nightly)}
+                <span className="text-sm font-normal text-[#757575]"> /night</span>
+              </p>
+              <p className="mt-1 text-xs text-[#9b9b9b]">
+                {nights} night{nights !== 1 ? "s" : ""} · Total {formatPrice(pricing.total)} incl. GST
+              </p>
+            </>
+          )}
+        </div>
 
-        <button
-          type="button"
-          onClick={handleReserve}
-          disabled={roomSelection?.hasInventory && !hasSelection}
-          className="mt-4 hidden w-full items-center justify-center rounded bg-brand py-3 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-[#c0c0c0] lg:flex"
-        >
-          {hasSelection ? "Continue to Book" : "Select Room"}
-        </button>
+        <div className="shrink-0 lg:border-t lg:border-[#ececec] lg:pt-4">
+          <button
+            type="button"
+            onClick={handleReserve}
+            disabled={roomSelection?.hasInventory && !hasSelection}
+            className="mt-4 hidden w-full items-center justify-center rounded bg-brand py-3 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-[#c0c0c0] lg:mt-0 lg:flex"
+          >
+            {hasSelection ? "Continue to Book" : "Select Room"}
+          </button>
 
-        {roomSelection?.hasInventory && !hasSelection ? (
-          <p className="mt-2 text-center text-xs text-[#757575]">
-            Choose a room and meal plan below to continue
-          </p>
-        ) : null}
+          {roomSelection?.hasInventory && !hasSelection ? (
+            <p className="mt-2 text-center text-xs text-[#757575]">
+              Choose a room and meal plan below to continue
+            </p>
+          ) : null}
+        </div>
       </div>
 
       {!hasSelection ? (
-        <div className="border-t border-[#f0f0f0] bg-[#fafafa] px-4 py-3 text-xs text-[#757575]">
+        <div className="shrink-0 border-t border-[#f0f0f0] bg-[#fafafa] px-4 py-3 text-xs text-[#757575]">
           <p className="flex justify-between">
             <span>Room charges</span>
             <span className="font-semibold text-[#1a1a1a]">{formatPrice(pricing.subtotal)}</span>
