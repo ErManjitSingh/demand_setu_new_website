@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatGuestsRoomsLabel } from "@/components/booking/GuestsRoomsPicker";
 import BookingPriceBreakdown from "@/components/booking/BookingPriceBreakdown";
@@ -17,7 +17,15 @@ import {
 import { calculateBookingPrice } from "@/lib/bookingPricing";
 import { normalizeGuests } from "@/lib/bookingSearch";
 import { serializeChildAgesParam } from "@/lib/guestOccupancy";
+import { useGuestAuth } from "@/hooks/useGuestAuth";
+import { buildCheckoutApiPayload } from "@/lib/checkoutPayload";
+import {
+  createInventoryBooking,
+  getGuestProfileFromSession,
+} from "@/lib/inventoryBookingApi";
+import { sendBookingConfirmationEmail } from "@/lib/bookingEmail";
 import { loadRoomSelection } from "@/lib/roomSelectionStorage";
+import { sendBookingWelcomeWhatsApp } from "@/lib/whatsappApi";
 
 const AMENITY_ICONS = {
   "Free WiFi": "📶",
@@ -117,26 +125,143 @@ function BookingCheckoutFormClient({
   const daysAway = daysUntil(checkIn);
   const locationScore = (listing.rating * 2).toFixed(1);
   const guestLabel = formatGuestsRoomsLabel({ adults, children, rooms });
+  const { session, isLoggedIn, ready: authReady } = useGuestAuth();
+  const loggedInProfile = isLoggedIn ? getGuestProfileFromSession(session) : null;
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("India");
   const [mobile, setMobile] = useState("");
-  const [memberSignIn, setMemberSignIn] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showFormHint, setShowFormHint] = useState(false);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [bookError, setBookError] = useState("");
+  const formWasEmptyRef = useRef(true);
+  const formHintShownRef = useRef(false);
 
   const fullName = `${firstName} ${lastName}`.trim();
 
-  const handleBook = () => {
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !mobile.trim()) return;
+  const isGuestFormEmpty =
+    !firstName.trim() &&
+    !lastName.trim() &&
+    !email.trim() &&
+    !mobile.trim() &&
+    !password.trim();
+
+  useEffect(() => {
+    if (!authReady || !isLoggedIn || !session) return;
+    const profile = getGuestProfileFromSession(session);
+    if (!profile) return;
+    setFirstName(profile.firstName || "");
+    setLastName(profile.lastName || "");
+    setEmail(profile.email || "");
+    setMobile(profile.mobile || "");
+    setCountry(profile.country || "India");
+  }, [authReady, isLoggedIn, session]);
+
+  useEffect(() => {
+    if (isLoggedIn) return;
+    if (formWasEmptyRef.current && !isGuestFormEmpty && !formHintShownRef.current) {
+      setShowFormHint(true);
+      formHintShownRef.current = true;
+    }
+    if (!isGuestFormEmpty) {
+      formWasEmptyRef.current = false;
+    }
+  }, [isGuestFormEmpty, isLoggedIn]);
+
+  const buildApiPayload = (guestOverrides = {}) =>
+    buildCheckoutApiPayload({
+      listing,
+      checkIn,
+      checkOut,
+      guests: trip.guests,
+      nights,
+      hasInventorySelection,
+      roomBooking,
+      lineItems,
+      subtotal,
+      gst,
+      total,
+      nightly,
+      guest: {
+        firstName,
+        lastName,
+        fullName,
+        email,
+        country,
+        mobile,
+        ...(isLoggedIn ? {} : { password }),
+        ...guestOverrides,
+      },
+    });
+
+  useEffect(() => {
+    const apiPayload = buildApiPayload();
+    console.log("[Checkout API payload]", apiPayload);
+  }, [
+    listing.slug,
+    checkIn,
+    checkOut,
+    trip.guests,
+    nights,
+    hasInventorySelection,
+    roomBooking,
+    subtotal,
+    gst,
+    total,
+    lineItems,
+    nightly,
+    inventoryQueryKey,
+  ]);
+
+  const handleBook = async (paymentMethod = "pay_now") => {
+    const hasGuestDetails =
+      firstName.trim() && lastName.trim() && email.trim() && mobile.trim();
+    const canSubmit = isLoggedIn
+      ? hasGuestDetails
+      : hasGuestDetails && password.trim();
+
+    if (!canSubmit) {
+      return;
+    }
+
+    const submitPayload = buildApiPayload();
+    console.log("[Checkout API submit]", submitPayload);
+    console.log("[Checkout API submit JSON]", JSON.stringify(submitPayload, null, 2));
+
+    setBookError("");
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+
+    try {
+      await createInventoryBooking({
+        ...submitPayload,
+        paymentMethod,
+      });
+
+      const bookingForNotifications = { ...submitPayload, paymentMethod };
+
+      try {
+        await sendBookingWelcomeWhatsApp({ mobile: mobile.trim() });
+      } catch (whatsappError) {
+        console.warn("[Checkout] WhatsApp welcome template failed:", whatsappError);
+      }
+
+      try {
+        await sendBookingConfirmationEmail(bookingForNotifications);
+      } catch (emailError) {
+        console.warn("[Checkout] Booking confirmation email failed:", emailError);
+      }
+
       setSuccess(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
-    }, 900);
+    } catch (error) {
+      setBookError(error?.message || "Booking failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (success) {
@@ -224,17 +349,23 @@ function BookingCheckoutFormClient({
           </div>
         </div>
 
-        <div className="rounded-xl border border-brand/20 bg-brand-muted/30 px-4 py-3.5 text-sm text-stone-700">
-          <span className="font-bold text-brand">Save 10% or more</span> when you{" "}
-          <Link href="/signin" className="font-bold text-brand underline">
-            sign in
-          </Link>{" "}
-          or{" "}
-          <Link href="/signup" className="font-bold text-brand underline">
-            create a free account
-          </Link>
-          .
-        </div>
+        {isLoggedIn ? (
+          <div className="rounded-xl border border-brand/25 bg-gradient-to-r from-brand-muted to-orange-50 px-4 py-3.5 text-sm text-stone-700">
+            Signed in as{" "}
+            <span className="font-bold text-brand-dark">{loggedInProfile?.fullName}</span>.{" "}
+            <Link href="/my-bookings" className="font-bold text-brand underline">
+              View My Bookings
+            </Link>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-brand/20 bg-brand-muted/30 px-4 py-3.5 text-sm text-stone-700">
+            Already booked?{" "}
+            <Link href="/signin" className="font-bold text-brand underline">
+              Sign in
+            </Link>{" "}
+            to skip filling your details.
+          </div>
+        )}
 
         <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm sm:p-7">
           {hasInventorySelection ? (
@@ -263,107 +394,132 @@ function BookingCheckoutFormClient({
               hasInventorySelection ? "mt-5" : ""
             }`}
           >
-            Enter your details
+            {isLoggedIn ? "Your details" : "Enter your details"}
           </h2>
 
-          <div className="mt-4 flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-200 text-xs font-bold text-stone-600">
-              i
-            </span>
-            <p className="text-sm text-muted">
-              Almost done! Just fill in the <span className="font-bold text-brand">*</span> required
-              info
+          {isLoggedIn ? (
+            <LoggedInGuestSummary
+              profile={loggedInProfile}
+              email={email}
+              mobile={mobile}
+              country={country}
+            />
+          ) : (
+            <>
+              <div className="mt-4 flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-200 text-xs font-bold text-stone-600">
+                  i
+                </span>
+                <p className="text-sm text-muted">
+                  Almost done! Just fill in the <span className="font-bold text-brand">*</span>{" "}
+                  required info
+                </p>
+              </div>
+
+              {showFormHint ? (
+                <div
+                  role="status"
+                  className="animate-drop-from-top mt-4 overflow-hidden rounded-xl border border-brand/25 bg-gradient-to-r from-brand-muted to-orange-50 px-4 py-3.5 shadow-sm shadow-brand/10"
+                >
+                  <p className="text-sm font-semibold leading-relaxed text-brand-dark">
+                    Please fill all the details and use your number and password to sign in and
+                    check your My Bookings.
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="First name"
+                  id="firstName"
+                  required
+                  value={firstName}
+                  onChange={setFirstName}
+                />
+                <Field
+                  label="Last name"
+                  id="lastName"
+                  required
+                  value={lastName}
+                  onChange={setLastName}
+                />
+              </div>
+
+              <div className="mt-4">
+                <Field
+                  label="Email address"
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={setEmail}
+                  hint="Confirmation email will be sent to this address"
+                />
+              </div>
+
+              <div className="mt-4">
+                <label htmlFor="country" className="block text-sm font-bold text-foreground">
+                  Country/region <span className="text-brand">*</span>
+                </label>
+                <select
+                  id="country"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-sm font-medium outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                >
+                  {["India", "United States", "United Kingdom", "UAE", "Singapore", "Australia"].map(
+                    (c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              <div className="mt-4">
+                <label htmlFor="mobile" className="block text-sm font-bold text-foreground">
+                  Phone number <span className="text-brand">*</span>
+                </label>
+                <p className="mt-0.5 text-xs text-muted">
+                  Needed by the property to validate your booking
+                </p>
+                <div className="mt-1.5 flex gap-2">
+                  <span className="flex shrink-0 items-center rounded-lg border border-stone-300 bg-stone-50 px-3 text-sm font-semibold text-stone-600">
+                    IN +91
+                  </span>
+                  <input
+                    id="mobile"
+                    type="tel"
+                    required
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value)}
+                    placeholder="98765 43210"
+                    className="min-w-0 flex-1 rounded-lg border border-stone-300 px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Field
+                  label="Password"
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={setPassword}
+                  placeholder="Create a password"
+                  hint="Use this with your phone number to sign in and view My Bookings"
+                />
+              </div>
+            </>
+          )}
+
+          {bookError ? (
+            <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {bookError}
             </p>
-          </div>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <Field
-              label="First name"
-              id="firstName"
-              required
-              value={firstName}
-              onChange={setFirstName}
-            />
-            <Field
-              label="Last name"
-              id="lastName"
-              required
-              value={lastName}
-              onChange={setLastName}
-            />
-          </div>
-
-          <div className="mt-4">
-            <Field
-              label="Email address"
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={setEmail}
-              hint="Confirmation email will be sent to this address"
-            />
-          </div>
-
-          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-stone-100 bg-stone-50/80 p-3">
-            <input
-              type="checkbox"
-              checked={memberSignIn}
-              onChange={(e) => setMemberSignIn(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-stone-300 text-brand"
-            />
-            <span className="text-sm">
-              <span className="font-bold text-foreground">
-                Sign in to save 10% or more (optional)
-              </span>
-              <span className="mt-0.5 block text-xs text-muted">
-                Member prices apply at checkout when signed in
-              </span>
-            </span>
-          </label>
-
-          <div className="mt-4">
-            <label htmlFor="country" className="block text-sm font-bold text-foreground">
-              Country/region <span className="text-brand">*</span>
-            </label>
-            <select
-              id="country"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-sm font-medium outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            >
-              {["India", "United States", "United Kingdom", "UAE", "Singapore", "Australia"].map(
-                (c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                )
-              )}
-            </select>
-          </div>
-
-          <div className="mt-4">
-            <label htmlFor="mobile" className="block text-sm font-bold text-foreground">
-              Phone number <span className="text-brand">*</span>
-            </label>
-            <p className="mt-0.5 text-xs text-muted">
-              Needed by the property to validate your booking
-            </p>
-            <div className="mt-1.5 flex gap-2">
-              <span className="flex shrink-0 items-center rounded-lg border border-stone-300 bg-stone-50 px-3 text-sm font-semibold text-stone-600">
-                IN +91
-              </span>
-              <input
-                id="mobile"
-                type="tel"
-                required
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
-                placeholder="98765 43210"
-                className="min-w-0 flex-1 rounded-lg border border-stone-300 px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-              />
-            </div>
-          </div>
+          ) : null}
 
           <BookingActionButtons loading={loading} onBook={handleBook} className="mt-8 hidden lg:grid" />
           <p className="mt-3 hidden text-center text-xs text-muted lg:block">
@@ -376,7 +532,7 @@ function BookingCheckoutFormClient({
         loading={loading}
         onBook={handleBook}
         fixed
-        total={memberSignIn ? Math.round(total * 0.9) : total}
+        total={total}
       />
 
       {/* Right — booking details & price summary */}
@@ -447,17 +603,10 @@ function BookingCheckoutFormClient({
             </ul>
           )}
 
-          {memberSignIn && (
-            <p className="mt-3 flex justify-between text-sm text-brand-dark">
-              <span>Member discount (10%)</span>
-              <span className="font-bold">−{formatPrice(Math.round(total * 0.1))}</span>
-            </p>
-          )}
-
           <div className="mt-3 flex items-center justify-between border-t border-stone-200 pt-3">
             <span className="font-extrabold text-foreground">Total</span>
             <span className="text-xl font-extrabold text-brand">
-              {formatPrice(memberSignIn ? Math.round(total * 0.9) : total)}
+              {formatPrice(total)}
             </span>
           </div>
           <p className="mt-2 text-[11px] text-muted">Includes 5% GST · INR</p>
@@ -479,6 +628,45 @@ export default function BookingCheckoutForm(props) {
     >
       <BookingCheckoutFormClient {...props} />
     </Suspense>
+  );
+}
+
+function LoggedInGuestSummary({ profile, email, mobile, country }) {
+  const displayName = profile?.fullName || "Guest";
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-2xl border border-brand/20 bg-gradient-to-br from-brand-muted/80 to-orange-50/60">
+      <div className="flex items-center gap-3 border-b border-brand/10 bg-white/60 px-4 py-3 sm:px-5">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-orange-500 text-lg font-extrabold text-white shadow-md">
+          {displayName.charAt(0).toUpperCase()}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-base font-extrabold text-foreground">{displayName}</p>
+          <p className="text-xs font-semibold text-brand-dark">Signed in · details auto-filled</p>
+        </div>
+        <span className="ml-auto shrink-0 rounded-full bg-brand px-2.5 py-1 text-[10px] font-bold uppercase text-white">
+          ✓
+        </span>
+      </div>
+      <dl className="grid gap-3 px-4 py-4 sm:grid-cols-2 sm:px-5">
+        <div>
+          <dt className="text-[10px] font-bold uppercase tracking-wide text-muted">Email</dt>
+          <dd className="mt-0.5 break-all text-sm font-semibold text-foreground">{email}</dd>
+        </div>
+        <div>
+          <dt className="text-[10px] font-bold uppercase tracking-wide text-muted">Mobile</dt>
+          <dd className="mt-0.5 text-sm font-semibold text-foreground">+91 {mobile}</dd>
+        </div>
+        <div className="sm:col-span-2">
+          <dt className="text-[10px] font-bold uppercase tracking-wide text-muted">Country</dt>
+          <dd className="mt-0.5 text-sm font-semibold text-foreground">{country}</dd>
+        </div>
+      </dl>
+      <p className="border-t border-brand/10 px-4 py-3 text-xs text-muted sm:px-5">
+        Booking will be placed under your account. Confirmation will be sent to your email and
+        WhatsApp.
+      </p>
+    </div>
   );
 }
 
@@ -632,7 +820,7 @@ function BookingActionButtons({ loading, onBook, className = "", fixed = false, 
       <button
         type="button"
         disabled={loading}
-        onClick={onBook}
+        onClick={() => onBook("pay_now")}
         className="rounded-xl bg-gradient-to-r from-brand to-orange-500 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand/30 transition hover:from-brand-dark hover:to-orange-600 disabled:opacity-70 lg:py-4"
       >
         {loading ? "Processing…" : "Pay now"}
@@ -640,7 +828,7 @@ function BookingActionButtons({ loading, onBook, className = "", fixed = false, 
       <button
         type="button"
         disabled={loading}
-        onClick={onBook}
+        onClick={() => onBook("pay_at_property")}
         className="rounded-xl border-2 border-brand bg-white py-3.5 text-sm font-extrabold text-brand transition hover:bg-brand-muted disabled:opacity-70 lg:py-4"
       >
         {loading ? "Booking…" : fixed ? "Pay at property" : "Book now — pay at property"}

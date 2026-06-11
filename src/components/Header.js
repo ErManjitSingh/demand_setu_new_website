@@ -6,6 +6,7 @@ import { LogoLink } from "@/components/Logo";
 import HeaderSearchBar from "@/components/HeaderSearchBar";
 import { getListingBySlug } from "@/lib/listings";
 import { useCategoryExplore } from "@/hooks/useCategoryExplore";
+import { useGuestAuth } from "@/hooks/useGuestAuth";
 
 const navLinks = [
   { href: "/", label: "Home", explore: null },
@@ -83,6 +84,8 @@ export default function Header() {
 }
 
 function HeaderActions() {
+  const { isLoggedIn } = useGuestAuth();
+
   return (
     <div className="flex shrink-0 items-center gap-2 sm:gap-3">
       <a
@@ -102,10 +105,10 @@ function HeaderActions() {
         </span>
       </a>
       <Link
-        href="/signin"
+        href={isLoggedIn ? "/my-bookings" : "/signin"}
         className="inline-flex rounded-full border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground transition hover:border-brand/40 sm:px-5 sm:py-2.5 sm:text-sm"
       >
-        Sign in
+        {isLoggedIn ? "My Bookings" : "Sign in"}
       </Link>
     </div>
   );

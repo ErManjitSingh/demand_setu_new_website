@@ -17,7 +17,7 @@ export default function SignInPage() {
             Welcome back
           </h1>
           <p className="mt-2 text-sm text-muted">
-            Sign in to save stays, manage bookings, and get member prices.
+            Sign in with your mobile and password to view your bookings.
           </p>
         </div>
 
