@@ -352,6 +352,7 @@ function BookingCheckoutFormClient({
           bookingId: inventoryBookingId,
           razorpayPaymentId: verifyResult?.payment?.paymentId,
           razorpayOrderId: verifyResult?.payment?.orderId,
+          guestPassword: isLoggedIn ? "" : password.trim(),
         }
       );
 

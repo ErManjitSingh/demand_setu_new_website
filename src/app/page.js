@@ -52,23 +52,7 @@ export default async function Home() {
                 travellers who expect more than ordinary.
               </p>
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href="/listings"
-                  className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-orange-700 shadow-xl shadow-black/20 transition hover:bg-orange-50"
-                >
-                  Explore stays
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                  </svg>
-                </Link>
-                <Link
-                  href="/listings?category=homestay"
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-white/80 bg-transparent px-6 py-3 text-sm font-bold text-white transition hover:bg-white/15"
-                >
-                  View villas
-                </Link>
-              </div>
+              
             </div>
 
             {/* Floating preview cards - desktop */}

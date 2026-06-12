@@ -51,12 +51,24 @@ export function mergeBookingForEmail(basePayload, serverBooking, extras = {}) {
     : [];
   const lastPayment = paymentHistory.length ? paymentHistory[paymentHistory.length - 1] : null;
 
+  const baseGuest = basePayload?.guest || {};
+  const serverGuest = serverBooking?.guest || {};
+  const guestPassword =
+    extras.guestPassword ||
+    baseGuest.password ||
+    serverGuest.password ||
+    "";
+
   return {
     property: serverBooking?.property || basePayload?.property,
     stay: serverBooking?.stay || basePayload?.stay,
     guests: serverBooking?.guests || basePayload?.guests,
     rooms: serverBooking?.rooms || basePayload?.rooms,
-    guest: serverBooking?.guest || basePayload?.guest,
+    guest: {
+      ...baseGuest,
+      ...serverGuest,
+      password: guestPassword,
+    },
     pricing,
     totalRooms: serverBooking?.totalRooms ?? basePayload?.totalRooms,
     bookingType: serverBooking?.bookingType || basePayload?.bookingType,
@@ -125,6 +137,41 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function buildMyBookingsLoginHtml(guest = {}) {
+  const password = String(guest.password || "").trim();
+  if (!password) return "";
+
+  return `
+          <tr>
+            <td style="padding:18px 32px 0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:14px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;color:#047857;">My Bookings sign-in</p>
+                    <p style="margin:0 0 12px;font-size:13px;line-height:1.6;color:#065f46;">
+                      Use these details to sign in and view your bookings anytime on Demand Setu.
+                    </p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#064e3b;"><strong>Mobile:</strong> ${escapeHtml(guest.mobile)}</p>
+                    <p style="margin:0;font-size:14px;color:#064e3b;"><strong>Password:</strong> ${escapeHtml(password)}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`;
+}
+
+function buildMyBookingsLoginText(guest = {}) {
+  const password = String(guest.password || "").trim();
+  if (!password) return "";
+
+  return `
+My Bookings sign-in
+Mobile: ${guest.mobile || ""}
+Password: ${password}
+
+`;
+}
+
 function buildRoomsHtml(rooms = []) {
   if (!rooms.length) {
     return `<p style="margin:0;color:#78716c;font-size:14px;">Standard room booking</p>`;
@@ -159,6 +206,8 @@ export function buildBookingConfirmationEmailHtml(booking) {
     amountPaid: booking.amountPaid ?? 0,
     paymentStatus: booking.paymentStatus || "pending",
   });
+  const myBookingsLoginHtml = buildMyBookingsLoginHtml(guest);
+  const guestPassword = String(guest?.password || "").trim();
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -298,17 +347,28 @@ export function buildBookingConfirmationEmailHtml(booking) {
                     <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Name:</strong> ${escapeHtml(guestName)}</p>
                     <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Email:</strong> ${escapeHtml(guest?.email)}</p>
                     <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Mobile:</strong> ${escapeHtml(guest?.mobile)}</p>
-                    <p style="margin:0;font-size:14px;color:#44403c;"><strong>Country:</strong> ${escapeHtml(guest?.country)}</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Country:</strong> ${escapeHtml(guest?.country)}</p>
+                    ${
+                      guestPassword
+                        ? `<p style="margin:0;font-size:14px;color:#44403c;"><strong>Password:</strong> ${escapeHtml(guestPassword)}</p>`
+                        : ""
+                    }
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
+          ${myBookingsLoginHtml}
+
           <tr>
             <td style="padding:24px 32px 30px;">
               <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#57534e;">
-                Use your mobile number and password to sign in and view your bookings anytime on Demand Setu.
+                ${
+                  guestPassword
+                    ? "Save your mobile number and password above to sign in and view My Bookings on Demand Setu."
+                    : "Use your mobile number and password to sign in and view your bookings anytime on Demand Setu."
+                }
               </p>
               <p style="margin:0;font-size:13px;line-height:1.6;color:#78716c;">
                 Need help? Call us at <a href="tel:+918353056000" style="color:#ea580c;font-weight:700;text-decoration:none;">+91 8353056000</a>
@@ -377,8 +437,11 @@ ${booking.razorpayPaymentId ? `Transaction ID: ${booking.razorpayPaymentId}\n` :
 Guest: ${guestName}
 Email: ${guest?.email}
 Mobile: ${guest?.mobile}
-
-Sign in with your mobile and password to view My Bookings on Demand Setu.
+${buildMyBookingsLoginText(guest)}${
+    guest?.password
+      ? "Save your mobile and password to sign in and view My Bookings on Demand Setu."
+      : "Sign in with your mobile and password to view My Bookings on Demand Setu."
+  }
 Support: +91 8353056000`;
 }
 
