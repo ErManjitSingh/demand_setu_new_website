@@ -21,8 +21,13 @@ import { useGuestAuth } from "@/hooks/useGuestAuth";
 import { buildCheckoutApiPayload } from "@/lib/checkoutPayload";
 import {
   createInventoryBooking,
+  extractInventoryBookingId,
   getGuestProfileFromSession,
 } from "@/lib/inventoryBookingApi";
+import {
+  createDemandOrder,
+  openDemandRazorpayCheckout,
+} from "@/lib/razorpayDemandApi";
 import { sendBookingConfirmationEmail } from "@/lib/bookingEmail";
 import { loadRoomSelection } from "@/lib/roomSelectionStorage";
 import { sendBookingWelcomeWhatsApp } from "@/lib/whatsappApi";
@@ -217,6 +222,20 @@ function BookingCheckoutFormClient({
     inventoryQueryKey,
   ]);
 
+  const sendBookingNotifications = async (bookingForNotifications) => {
+    try {
+      await sendBookingWelcomeWhatsApp({ mobile: mobile.trim() });
+    } catch (whatsappError) {
+      console.warn("[Checkout] WhatsApp welcome template failed:", whatsappError);
+    }
+
+    try {
+      await sendBookingConfirmationEmail(bookingForNotifications);
+    } catch (emailError) {
+      console.warn("[Checkout] Booking confirmation email failed:", emailError);
+    }
+  };
+
   const handleBook = async (paymentMethod = "pay_now") => {
     const hasGuestDetails =
       firstName.trim() && lastName.trim() && email.trim() && mobile.trim();
@@ -236,29 +255,69 @@ function BookingCheckoutFormClient({
     setLoading(true);
 
     try {
-      await createInventoryBooking({
+      const bookingResponse = await createInventoryBooking({
         ...submitPayload,
         paymentMethod,
       });
 
+      const inventoryBookingId = extractInventoryBookingId(bookingResponse);
       const bookingForNotifications = { ...submitPayload, paymentMethod };
 
-      try {
-        await sendBookingWelcomeWhatsApp({ mobile: mobile.trim() });
-      } catch (whatsappError) {
-        console.warn("[Checkout] WhatsApp welcome template failed:", whatsappError);
+      if (paymentMethod === "pay_now") {
+        if (!inventoryBookingId) {
+          throw new Error("Booking created but payment could not be started. Please contact support.");
+        }
+
+        const payableTotal =
+          submitPayload.pricing?.payableTotal ?? submitPayload.pricing?.total ?? total;
+
+        const orderResponse = await createDemandOrder({
+          amount: payableTotal,
+          inventoryBookingId,
+          customerDetails: {
+            name: fullName,
+            email: email.trim(),
+            phone: mobile.trim(),
+          },
+          packageDetails: {
+            property: submitPayload.property,
+            stay: submitPayload.stay,
+            pricing: submitPayload.pricing,
+          },
+          notes: `Booking for ${listing.title}`,
+        });
+
+        const keyId = orderResponse.key_id;
+        const order = orderResponse.order;
+
+        if (!keyId || !order?.id) {
+          throw new Error("Could not start payment. Please try again.");
+        }
+
+        setLoading(false);
+        await openDemandRazorpayCheckout({
+          keyId,
+          order,
+          customer: {
+            name: fullName,
+            email: email.trim(),
+            phone: mobile.trim(),
+          },
+          description: `Booking · ${listing.title}`,
+        });
+        setLoading(true);
       }
 
-      try {
-        await sendBookingConfirmationEmail(bookingForNotifications);
-      } catch (emailError) {
-        console.warn("[Checkout] Booking confirmation email failed:", emailError);
-      }
-
+      await sendBookingNotifications(bookingForNotifications);
       setSuccess(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      setBookError(error?.message || "Booking failed. Please try again.");
+      const message = error?.message || "Booking failed. Please try again.";
+      setBookError(
+        message === "Payment cancelled"
+          ? "Payment was cancelled. Your booking may still be saved — check My Bookings or try Pay at property."
+          : message
+      );
     } finally {
       setLoading(false);
     }

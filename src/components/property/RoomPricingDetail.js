@@ -22,7 +22,7 @@ export default function RoomPricingDetail({
       </p>
 
       <p className="flex justify-between gap-3 text-[#4a4a4a]">
-        <span>Base rate (2 guests / room)</span>
+        <span> Total Base Rate </span>
         <span className="shrink-0 font-semibold text-[#1a1a1a]">
           {formatPrice(pricing.baseSubtotal ?? pricing.subtotal)}
         </span>
@@ -37,12 +37,12 @@ export default function RoomPricingDetail({
         </p>
       ) : null}
 
-      <p className="flex justify-between gap-3 text-[#4a4a4a]">
+      {/* <p className="flex justify-between gap-3 text-[#4a4a4a]">
         <span>Room charges</span>
         <span className="shrink-0 font-semibold text-[#1a1a1a]">
           {formatPrice(pricing.subtotal)}
         </span>
-      </p>
+      </p> */}
 
       <p className="flex justify-between gap-3 text-[#4a4a4a]">
         <span>GST (5%)</span>
@@ -51,7 +51,7 @@ export default function RoomPricingDetail({
 
       <p className="flex justify-between gap-3 border-t border-[#efefef] pt-1.5 font-bold text-[#1a1a1a]">
         <span>Total (incl. GST)</span>
-        <span className="shrink-0">{formatPrice(pricing.total)}</span>
+        <span className="shrink-0 text-xl font-bold text-foreground sm:text-xl">{formatPrice(pricing.total)}</span>
       </p>
     </div>
   );

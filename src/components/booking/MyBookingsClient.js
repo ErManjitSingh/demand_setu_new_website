@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { formatPrice } from "@/lib/listings";
 import { formatBookingDate } from "@/lib/dates";
 import { useGuestAuth } from "@/hooks/useGuestAuth";
@@ -10,6 +10,11 @@ import {
   getBookingsByMobile,
   getGuestProfileFromSession,
 } from "@/lib/inventoryBookingApi";
+import {
+  canPayBookingOnline,
+  getBookingAmountDue,
+  payInventoryBookingOnline,
+} from "@/lib/razorpayDemandApi";
 
 function parseApiDate(value) {
   if (!value) return null;
@@ -20,6 +25,14 @@ function parseApiDate(value) {
 function formatStatusLabel(value) {
   const label = String(value || "pending").replace(/_/g, " ");
   return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function getPaymentBadgeClass(payment) {
+  const status = String(payment || "pending").toLowerCase();
+  if (status === "completed") return "bg-emerald-100 text-emerald-800";
+  if (status === "partially_paid") return "bg-amber-100 text-amber-900";
+  if (status === "rejected") return "bg-red-100 text-red-800";
+  return "bg-white text-brand-dark";
 }
 
 function getRoomSummary(rooms = []) {
@@ -40,12 +53,15 @@ function getGuestsLabel(guests) {
   return `${adults} adult${adults !== 1 ? "s" : ""}${childPart} · ${rooms} room${rooms !== 1 ? "s" : ""}`;
 }
 
-function BookingCard({ booking }) {
+function BookingCard({ booking, onPayNow, paying, payError }) {
   const checkInDate = parseApiDate(booking.stay?.checkIn);
   const checkOutDate = parseApiDate(booking.stay?.checkOut);
   const property = booking.property || {};
   const total = booking.pricing?.payableTotal ?? booking.pricing?.total ?? 0;
+  const amountDue = getBookingAmountDue(booking);
+  const showPayNow = canPayBookingOnline(booking) && amountDue > 0;
   const bookingRef = String(booking._id || "").slice(-8).toUpperCase();
+  const isPartial = String(booking.payment || "").toLowerCase() === "partially_paid";
 
   return (
     <article className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition hover:shadow-md">
@@ -58,7 +74,9 @@ function BookingCard({ booking }) {
             <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold uppercase text-white backdrop-blur-sm">
               {formatStatusLabel(booking.tourCompleted)}
             </span>
-            <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase text-brand-dark">
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${getPaymentBadgeClass(booking.payment)}`}
+            >
               {formatStatusLabel(booking.payment)}
             </span>
           </div>
@@ -87,6 +105,11 @@ function BookingCard({ booking }) {
           <div className="shrink-0 rounded-xl bg-brand-muted px-4 py-2 text-right">
             <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Total</p>
             <p className="text-xl font-extrabold text-brand">{formatPrice(total)}</p>
+            {isPartial && booking.amountPaid > 0 ? (
+              <p className="mt-1 text-[10px] font-semibold text-muted">
+                Paid {formatPrice(booking.amountPaid)}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -142,6 +165,37 @@ function BookingCard({ booking }) {
           ) : null}
         </div>
 
+        {showPayNow ? (
+          <div className="mt-4 rounded-xl border border-brand/25 bg-gradient-to-r from-brand-muted/80 to-orange-50/70 px-4 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-bold text-foreground">
+                  {isPartial ? "Balance due" : "Payment required"}
+                </p>
+                <p className="mt-0.5 text-xs text-muted">
+                  Pay online now to confirm your booking
+                </p>
+                <p className="mt-1 text-lg font-extrabold text-brand">
+                  {formatPrice(amountDue)}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={paying}
+                onClick={() => onPayNow(booking)}
+                className="shrink-0 rounded-xl bg-gradient-to-r from-brand to-orange-500 px-6 py-3 text-sm font-extrabold text-white shadow-lg shadow-brand/25 transition hover:from-brand-dark hover:to-orange-600 disabled:opacity-70"
+              >
+                {paying ? "Opening payment…" : "Pay now"}
+              </button>
+            </div>
+            {payError ? (
+              <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                {payError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-4 text-xs text-muted">
           <span>
             Booked on{" "}
@@ -168,10 +222,18 @@ export default function MyBookingsClient() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [payingId, setPayingId] = useState(null);
+  const [payErrorById, setPayErrorById] = useState({});
 
   const profile = getGuestProfileFromSession(session);
   const guestName = profile?.fullName || "Guest";
   const mobile = profile?.mobile || session?.mobile || "";
+
+  const loadBookings = useCallback(async () => {
+    if (!mobile) return;
+    const response = await getBookingsByMobile(mobile);
+    setBookings(Array.isArray(response?.data) ? response.data : []);
+  }, [mobile]);
 
   useEffect(() => {
     if (ready && !isLoggedIn) {
@@ -188,10 +250,7 @@ export default function MyBookingsClient() {
       setLoading(true);
       setError("");
       try {
-        const response = await getBookingsByMobile(mobile);
-        if (!cancelled) {
-          setBookings(Array.isArray(response?.data) ? response.data : []);
-        }
+        await loadBookings();
       } catch (err) {
         if (!cancelled) {
           setError(err?.message || "Could not load your bookings.");
@@ -206,7 +265,29 @@ export default function MyBookingsClient() {
     return () => {
       cancelled = true;
     };
-  }, [ready, isLoggedIn, mobile]);
+  }, [ready, isLoggedIn, mobile, loadBookings]);
+
+  const handlePayNow = async (booking) => {
+    const bookingId = booking._id;
+    setPayingId(bookingId);
+    setPayErrorById((prev) => ({ ...prev, [bookingId]: "" }));
+
+    try {
+      await payInventoryBookingOnline(booking);
+      await loadBookings();
+    } catch (err) {
+      const message = err?.message || "Payment failed. Please try again.";
+      setPayErrorById((prev) => ({
+        ...prev,
+        [bookingId]:
+          message === "Payment cancelled"
+            ? "Payment was cancelled. You can try again anytime."
+            : message,
+      }));
+    } finally {
+      setPayingId(null);
+    }
+  };
 
   if (!ready || !isLoggedIn) {
     return (
@@ -280,7 +361,13 @@ export default function MyBookingsClient() {
               {bookings.length} booking{bookings.length !== 1 ? "s" : ""} found
             </p>
             {bookings.map((booking) => (
-              <BookingCard key={booking._id} booking={booking} />
+              <BookingCard
+                key={booking._id}
+                booking={booking}
+                onPayNow={handlePayNow}
+                paying={payingId === booking._id}
+                payError={payErrorById[booking._id]}
+              />
             ))}
           </div>
         )}

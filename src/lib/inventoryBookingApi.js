@@ -34,6 +34,13 @@ export async function createInventoryBooking(bookingData) {
   return postJson("api/inventorybooking/create", bookingData);
 }
 
+export function extractInventoryBookingId(response) {
+  const data = response?.data ?? response?.booking ?? response;
+  if (!data) return null;
+  if (typeof data === "string") return data;
+  return data._id || data.id || null;
+}
+
 export async function guestLogin({ mobile, password }) {
   return postJson("api/inventorybooking/guest-login", { mobile, password });
 }

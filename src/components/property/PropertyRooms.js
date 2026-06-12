@@ -140,7 +140,7 @@ function InventoryMealPlanRow({
       <div className="flex shrink-0 items-center justify-between gap-4 border-t border-border p-4 lg:w-44 lg:flex-col lg:justify-center lg:border-l lg:border-t-0 lg:p-5">
         {offer ? (
           <div className="text-right lg:w-full">
-            <p className="text-xl font-bold text-foreground sm:text-2xl">
+            <p className="text-lg font-bold text-foreground sm:text-xl">
               {formatPrice(offer.nightly)}
             </p>
             <p className="text-[11px] text-muted">base rate / night</p>
