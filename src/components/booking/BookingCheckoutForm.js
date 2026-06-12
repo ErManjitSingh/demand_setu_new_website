@@ -19,6 +19,8 @@ import { normalizeGuests } from "@/lib/bookingSearch";
 import { serializeChildAgesParam } from "@/lib/guestOccupancy";
 import { useGuestAuth } from "@/hooks/useGuestAuth";
 import { buildCheckoutApiPayload } from "@/lib/checkoutPayload";
+import { createHotelBooking } from "@/lib/hotelBookingApi";
+import { buildHotelBookingCreatePayload } from "@/lib/hotelBookingPayload";
 import {
   createInventoryBooking,
   extractInventoryBookingId,
@@ -277,6 +279,22 @@ function BookingCheckoutFormClient({
       const inventoryBookingId = extractInventoryBookingId(bookingResponse);
       const createdBooking = bookingResponse?.data ?? bookingResponse?.booking ?? bookingResponse;
       let verifyResult = null;
+
+      if (inventoryBookingId) {
+        try {
+          const hotelBookingPayload = buildHotelBookingCreatePayload({
+            inventoryBookingId,
+            listing,
+            submitPayload,
+            lineItems,
+            nightly,
+          });
+          console.log("[Hotel booking API submit]", hotelBookingPayload);
+          await createHotelBooking(hotelBookingPayload);
+        } catch (hotelBookingError) {
+          console.warn("[Checkout] Hotel booking create failed:", hotelBookingError);
+        }
+      }
 
       if (paymentMethod === "pay_now") {
         if (!inventoryBookingId) {
