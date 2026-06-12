@@ -23,8 +23,98 @@ function formatDateLabel(value) {
 
 function paymentLabel(method) {
   if (method === "pay_at_property") return "Pay at property";
-  if (method === "pay_now") return "Pay now";
+  if (method === "pay_now") return "Pay now (online)";
   return method || "—";
+}
+
+function paymentStatusLabel(status) {
+  return String(status || "pending")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function mergeBookingForEmail(basePayload, serverBooking, extras = {}) {
+  const pricing = serverBooking?.pricing || basePayload?.pricing || {};
+  const total = Number(pricing.payableTotal ?? pricing.total ?? 0);
+  const amountPaid =
+    serverBooking?.amountPaid !== undefined && serverBooking?.amountPaid !== null
+      ? Number(serverBooking.amountPaid)
+      : extras.paymentMethod === "pay_at_property"
+        ? 0
+        : 0;
+
+  const paymentStatus = serverBooking?.payment || "pending";
+  const amountDue = Math.max(0, total - amountPaid);
+
+  const paymentHistory = Array.isArray(serverBooking?.paymentHistory)
+    ? serverBooking.paymentHistory
+    : [];
+  const lastPayment = paymentHistory.length ? paymentHistory[paymentHistory.length - 1] : null;
+
+  return {
+    property: serverBooking?.property || basePayload?.property,
+    stay: serverBooking?.stay || basePayload?.stay,
+    guests: serverBooking?.guests || basePayload?.guests,
+    rooms: serverBooking?.rooms || basePayload?.rooms,
+    guest: serverBooking?.guest || basePayload?.guest,
+    pricing,
+    totalRooms: serverBooking?.totalRooms ?? basePayload?.totalRooms,
+    bookingType: serverBooking?.bookingType || basePayload?.bookingType,
+    paymentMethod: extras.paymentMethod || basePayload?.paymentMethod,
+    paymentStatus,
+    amountPaid,
+    amountDue,
+    bookingId: serverBooking?._id || extras.bookingId || null,
+    razorpayPaymentId: extras.razorpayPaymentId || lastPayment?.paymentId || "",
+    razorpayOrderId: extras.razorpayOrderId || lastPayment?.orderId || "",
+  };
+}
+
+function buildPaymentSummaryHtml(booking) {
+  const total = booking.pricing?.payableTotal ?? booking.pricing?.total ?? 0;
+  const amountPaid = Number(booking.amountPaid) || 0;
+  const amountDue = Number(booking.amountDue) ?? Math.max(0, total - amountPaid);
+
+  return `
+          <tr>
+            <td style="padding:18px 32px 0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-radius:16px;border:1px solid #ffedd5;overflow:hidden;">
+                <tr>
+                  <td width="33.33%" style="padding:18px 12px;text-align:center;background:#fafaf9;border-right:1px solid #e7e5e4;">
+                    <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;color:#78716c;">Total</p>
+                    <p style="margin:8px 0 0;font-size:22px;font-weight:800;color:#1c1917;">${formatInr(total)}</p>
+                  </td>
+                  <td width="33.33%" style="padding:18px 12px;text-align:center;background:#ecfdf5;border-right:1px solid #e7e5e4;">
+                    <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;color:#78716c;">Amount paid</p>
+                    <p style="margin:8px 0 0;font-size:22px;font-weight:800;color:#059669;">${formatInr(amountPaid)}</p>
+                  </td>
+                  <td width="33.33%" style="padding:18px 12px;text-align:center;background:#fff7ed;">
+                    <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;color:#78716c;">Balance due</p>
+                    <p style="margin:8px 0 0;font-size:22px;font-weight:800;color:#ea580c;">${formatInr(amountDue)}</p>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:12px;background:#fafaf9;border-radius:14px;border:1px solid #e7e5e4;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;color:#78716c;">Payment details</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Method:</strong> ${escapeHtml(paymentLabel(booking.paymentMethod))}</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Status:</strong> ${escapeHtml(paymentStatusLabel(booking.paymentStatus))}</p>
+                    ${
+                      booking.razorpayPaymentId
+                        ? `<p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Transaction ID:</strong> ${escapeHtml(booking.razorpayPaymentId)}</p>`
+                        : ""
+                    }
+                    ${
+                      booking.bookingId
+                        ? `<p style="margin:0;font-size:14px;color:#44403c;"><strong>Booking ID:</strong> ${escapeHtml(String(booking.bookingId))}</p>`
+                        : ""
+                    }
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`;
 }
 
 function escapeHtml(value) {
@@ -63,6 +153,12 @@ function buildRoomsHtml(rooms = []) {
 export function buildBookingConfirmationEmailHtml(booking) {
   const { property, stay, guests, guest, pricing, rooms = [], paymentMethod } = booking;
   const guestName = guest?.fullName || `${guest?.firstName || ""} ${guest?.lastName || ""}`.trim() || "Guest";
+  const paymentSummaryHtml = buildPaymentSummaryHtml({
+    ...booking,
+    paymentMethod: booking.paymentMethod || paymentMethod,
+    amountPaid: booking.amountPaid ?? 0,
+    paymentStatus: booking.paymentStatus || "pending",
+  });
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -166,6 +262,8 @@ export function buildBookingConfirmationEmailHtml(booking) {
             </td>
           </tr>
 
+          ${paymentSummaryHtml}
+
           <tr>
             <td style="padding:22px 32px 0;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#1c1917;border-radius:16px;">
@@ -237,6 +335,9 @@ export function buildBookingConfirmationEmailHtml(booking) {
 export function buildBookingConfirmationEmailText(booking) {
   const { property, stay, guests, guest, pricing, rooms = [], paymentMethod } = booking;
   const guestName = guest?.fullName || `${guest?.firstName || ""} ${guest?.lastName || ""}`.trim() || "Guest";
+  const total = pricing?.payableTotal ?? pricing?.total ?? 0;
+  const amountPaid = Number(booking.amountPaid) || 0;
+  const amountDue = Number(booking.amountDue) ?? Math.max(0, total - amountPaid);
 
   const roomLines = rooms.length
     ? rooms
@@ -260,14 +361,18 @@ Check-out: ${formatDateLabel(stay?.checkOut)} (until 12:00)
 Nights: ${stay?.nights}
 Guests: ${guests?.adults} adults, ${guests?.children || 0} children
 Rooms: ${booking.totalRooms ?? guests?.rooms}
-Payment: ${paymentLabel(paymentMethod)}
+Payment method: ${paymentLabel(booking.paymentMethod || paymentMethod)}
+Payment status: ${paymentStatusLabel(booking.paymentStatus)}
 
 Rooms:
 ${roomLines}
 
 Subtotal: ${formatInr(pricing?.subtotal)}
 GST: ${formatInr(pricing?.gst)}
-Total: ${formatInr(pricing?.payableTotal ?? pricing?.total)}
+Total: ${formatInr(total)}
+Amount paid: ${formatInr(amountPaid)}
+Balance due: ${formatInr(amountDue)}
+${booking.razorpayPaymentId ? `Transaction ID: ${booking.razorpayPaymentId}\n` : ""}${booking.bookingId ? `Booking ID: ${booking.bookingId}\n` : ""}
 
 Guest: ${guestName}
 Email: ${guest?.email}
@@ -284,7 +389,12 @@ export async function sendBookingConfirmationEmail(booking) {
   }
 
   const propertyTitle = booking?.property?.title || "your stay";
-  const subject = `Booking Confirmed · ${propertyTitle} | Demand Setu`;
+  const isPaidOnline =
+    booking?.paymentMethod === "pay_now" &&
+    ["completed", "partially_paid"].includes(String(booking?.paymentStatus || "").toLowerCase());
+  const subject = isPaidOnline
+    ? `Payment Received · Booking Confirmed · ${propertyTitle} | Demand Setu`
+    : `Booking Confirmed · ${propertyTitle} | Demand Setu`;
   const html = buildBookingConfirmationEmailHtml(booking);
   const text = buildBookingConfirmationEmailText(booking);
 

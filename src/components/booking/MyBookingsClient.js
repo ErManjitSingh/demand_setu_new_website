@@ -11,6 +11,11 @@ import {
   getGuestProfileFromSession,
 } from "@/lib/inventoryBookingApi";
 import {
+  mergeBookingForEmail,
+  sendBookingConfirmationEmail,
+} from "@/lib/bookingEmail";
+import { sendPaymentConfirmWhatsApp } from "@/lib/whatsappApi";
+import {
   canPayBookingOnline,
   getBookingAmountDue,
   payInventoryBookingOnline,
@@ -58,6 +63,7 @@ function BookingCard({ booking, onPayNow, paying, payError }) {
   const checkOutDate = parseApiDate(booking.stay?.checkOut);
   const property = booking.property || {};
   const total = booking.pricing?.payableTotal ?? booking.pricing?.total ?? 0;
+  const amountPaid = Number(booking.amountPaid) || 0;
   const amountDue = getBookingAmountDue(booking);
   const showPayNow = canPayBookingOnline(booking) && amountDue > 0;
   const bookingRef = String(booking._id || "").slice(-8).toUpperCase();
@@ -71,50 +77,76 @@ function BookingCard({ booking, onPayNow, paying, payError }) {
             Booking #{bookingRef}
           </p>
           <div className="flex flex-wrap gap-2">
+          <span
+              className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase "
+            >
+           Check in : 
+            </span>
             <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold uppercase text-white backdrop-blur-sm">
-              {formatStatusLabel(booking.tourCompleted)}
+               {formatStatusLabel(booking.tourCompleted)}
+            </span>
+            <span
+              className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase "
+            >
+            Payment status : 
             </span>
             <span
               className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${getPaymentBadgeClass(booking.payment)}`}
             >
-              {formatStatusLabel(booking.payment)}
+             {formatStatusLabel(booking.payment)}
             </span>
           </div>
         </div>
       </div>
 
       <div className="p-4 sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-extrabold leading-snug text-foreground sm:text-xl">
-              {property.title || "Hotel stay"}
-            </h2>
-            <p className="mt-1 text-sm text-muted">
-              {property.location}
-              {property.region ? ` · ${property.region}` : ""}
+        <div>
+          <h2 className="text-lg font-extrabold leading-snug text-foreground sm:text-xl">
+            {property.title || "Hotel stay"}
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            {property.location}
+            {property.region ? ` · ${property.region}` : ""}
+          </p>
+          {property.slug ? (
+            <Link
+              href={`/property/${property.slug}`}
+              className="mt-2 inline-block text-xs font-bold text-brand hover:underline"
+            >
+              View property →
+            </Link>
+          ) : null}
+        </div>
+
+        <div className="mt-5 grid grid-cols-3 overflow-hidden rounded-xl border border-stone-200 bg-gradient-to-r from-stone-50 via-brand-muted/30 to-orange-50/50">
+          <div className="border-r border-stone-200/80  text-center sm:px-5 sm:py-5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted sm:text-xs">
+              Total
             </p>
-            {property.slug ? (
-              <Link
-                href={`/property/${property.slug}`}
-                className="mt-2 inline-block text-xs font-bold text-brand hover:underline"
-              >
-                View property →
-              </Link>
-            ) : null}
+            <p className="mt-1 text-xl font-extrabold text-foreground sm:text-2xl">
+              {formatPrice(total)}
+            </p>
           </div>
-          <div className="shrink-0 rounded-xl bg-brand-muted px-4 py-2 text-right">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Total</p>
-            <p className="text-xl font-extrabold text-brand">{formatPrice(total)}</p>
-            {isPartial && booking.amountPaid > 0 ? (
-              <p className="mt-1 text-[10px] font-semibold text-muted">
-                Paid {formatPrice(booking.amountPaid)}
-              </p>
-            ) : null}
+          <div className="border-r border-stone-200/80 px-3 py-4 text-center sm:px-5 sm:py-5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted sm:text-xs">
+              Amount paid
+            </p>
+            <p className="mt-1 text-xl font-extrabold text-emerald-600 sm:text-2xl">
+              {formatPrice(amountPaid)}
+            </p>
+          </div>
+          <div className="px-3 py-4 text-center sm:px-5 sm:py-5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted sm:text-xs">
+              Due
+            </p>
+            <p className="mt-1 text-xl font-extrabold text-brand sm:text-2xl">
+              {formatPrice(amountDue)}
+            </p>
           </div>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-stone-100 bg-stone-50 px-3 py-2.5">
+           <div className="rounded-xl border border-stone-100 bg-stone-50 px-3 py-2.5">
             <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Check-in</p>
             <p className="mt-0.5 text-sm font-bold text-foreground">
               {checkInDate ? formatBookingDate(checkInDate) : booking.stay?.checkIn}
@@ -273,7 +305,26 @@ export default function MyBookingsClient() {
     setPayErrorById((prev) => ({ ...prev, [bookingId]: "" }));
 
     try {
-      await payInventoryBookingOnline(booking);
+      const verifyResult = await payInventoryBookingOnline(booking);
+      const updatedBooking = verifyResult?.booking ?? booking;
+      const emailPayload = mergeBookingForEmail(booking, updatedBooking, {
+        paymentMethod: "pay_now",
+        razorpayPaymentId: verifyResult?.payment?.paymentId,
+        razorpayOrderId: verifyResult?.payment?.orderId,
+      });
+
+      try {
+        await sendBookingConfirmationEmail(emailPayload);
+      } catch (emailError) {
+        console.warn("[My Bookings] Payment confirmation email failed:", emailError);
+      }
+
+      try {
+        await sendPaymentConfirmWhatsApp({ mobile });
+      } catch (whatsappError) {
+        console.warn("[My Bookings] WhatsApp payment_confirm template failed:", whatsappError);
+      }
+
       await loadBookings();
     } catch (err) {
       const message = err?.message || "Payment failed. Please try again.";

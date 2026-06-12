@@ -28,9 +28,15 @@ import {
   createDemandOrder,
   openDemandRazorpayCheckout,
 } from "@/lib/razorpayDemandApi";
-import { sendBookingConfirmationEmail } from "@/lib/bookingEmail";
+import {
+  mergeBookingForEmail,
+  sendBookingConfirmationEmail,
+} from "@/lib/bookingEmail";
 import { loadRoomSelection } from "@/lib/roomSelectionStorage";
-import { sendBookingWelcomeWhatsApp } from "@/lib/whatsappApi";
+import {
+  sendBookingWelcomeWhatsApp,
+  sendPaymentConfirmWhatsApp,
+} from "@/lib/whatsappApi";
 
 const AMENITY_ICONS = {
   "Free WiFi": "📶",
@@ -222,11 +228,19 @@ function BookingCheckoutFormClient({
     inventoryQueryKey,
   ]);
 
-  const sendBookingNotifications = async (bookingForNotifications) => {
+  const sendBookingNotifications = async (bookingForNotifications, { paidOnline = false } = {}) => {
     try {
       await sendBookingWelcomeWhatsApp({ mobile: mobile.trim() });
     } catch (whatsappError) {
       console.warn("[Checkout] WhatsApp welcome template failed:", whatsappError);
+    }
+
+    if (paidOnline) {
+      try {
+        await sendPaymentConfirmWhatsApp({ mobile: mobile.trim() });
+      } catch (whatsappError) {
+        console.warn("[Checkout] WhatsApp payment_confirm template failed:", whatsappError);
+      }
     }
 
     try {
@@ -261,7 +275,8 @@ function BookingCheckoutFormClient({
       });
 
       const inventoryBookingId = extractInventoryBookingId(bookingResponse);
-      const bookingForNotifications = { ...submitPayload, paymentMethod };
+      const createdBooking = bookingResponse?.data ?? bookingResponse?.booking ?? bookingResponse;
+      let verifyResult = null;
 
       if (paymentMethod === "pay_now") {
         if (!inventoryBookingId) {
@@ -295,7 +310,7 @@ function BookingCheckoutFormClient({
         }
 
         setLoading(false);
-        await openDemandRazorpayCheckout({
+        verifyResult = await openDemandRazorpayCheckout({
           keyId,
           order,
           customer: {
@@ -308,7 +323,23 @@ function BookingCheckoutFormClient({
         setLoading(true);
       }
 
-      await sendBookingNotifications(bookingForNotifications);
+      const serverBooking =
+        paymentMethod === "pay_now" ? verifyResult?.booking ?? createdBooking : createdBooking;
+
+      const bookingForNotifications = mergeBookingForEmail(
+        { ...submitPayload, paymentMethod },
+        serverBooking,
+        {
+          paymentMethod,
+          bookingId: inventoryBookingId,
+          razorpayPaymentId: verifyResult?.payment?.paymentId,
+          razorpayOrderId: verifyResult?.payment?.orderId,
+        }
+      );
+
+      await sendBookingNotifications(bookingForNotifications, {
+        paidOnline: paymentMethod === "pay_now" && Boolean(verifyResult?.success ?? verifyResult?.booking),
+      });
       setSuccess(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
