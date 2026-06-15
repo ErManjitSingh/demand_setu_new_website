@@ -22,6 +22,7 @@ export default function PropertyCard({
     return (
       <PropertyBookingLink
         slug={listing.slug}
+        listing={listing}
         requireBooking={requireBooking}
         onBlocked={onBookingBlocked}
         className="card-shine group relative flex h-full min-h-[280px] flex-col overflow-hidden rounded-3xl shadow-2xl shadow-stone-900/20 ring-1 ring-stone-900/10 sm:min-h-[320px]"
@@ -78,6 +79,7 @@ export default function PropertyCard({
   return (
     <PropertyBookingLink
       slug={listing.slug}
+      listing={listing}
       requireBooking={requireBooking}
       onBlocked={onBookingBlocked}
       className={`card-shine group overflow-hidden rounded-2xl bg-surface shadow-md shadow-stone-300/25 ring-1 ring-stone-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-brand/10 hover:ring-brand/20 active:scale-[0.99] ${

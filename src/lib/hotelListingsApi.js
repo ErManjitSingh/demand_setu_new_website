@@ -1,4 +1,5 @@
 import { buildApiUrl } from "@/lib/apiConfig";
+import { toLocationSlug } from "@/lib/listingsSlug";
 import {
   mapApiPropertyTypeToCategory,
   parseStarRating,
@@ -61,6 +62,8 @@ export function mapHotelToListing(hotel) {
     starRating,
     location: city ? `${city}, ${state}` : state,
     region: state,
+    propertyCity: city,
+    propertyState: state,
     rating: Number(roundedRating.toFixed(1)),
     reviews: 0,
     price,
@@ -187,12 +190,43 @@ export async function fetchHotelById(id) {
 export async function fetchListingsForLocation({ city = "", state = "" } = {}) {
   const selectedCity = String(city || "").trim();
   const selectedState = String(state || "").trim();
+  const citySlug = toLocationSlug(selectedCity);
+  const stateSlug = toLocationSlug(selectedState);
+  const sameLocation = Boolean(citySlug && stateSlug && citySlug === stateSlug);
 
-  if (selectedCity) {
-    return fetchHotelsByCity(selectedCity);
+  if (selectedCity && selectedState && !sameLocation) {
+    const listings = await fetchHotelsByCity(selectedCity);
+    return {
+      listings,
+      city: selectedCity,
+      state: selectedState,
+    };
   }
-  if (selectedState) {
-    return fetchHotelsByState(selectedState);
+
+  if (selectedState && !selectedCity) {
+    const listings = await fetchHotelsByState(selectedState);
+    return { listings, city: "", state: selectedState };
   }
-  return [];
+
+  const lookupName = selectedCity || selectedState;
+  if (!lookupName) {
+    return { listings: [], city: "", state: "" };
+  }
+
+  const [byCity, byState] = await Promise.all([
+    fetchHotelsByCity(lookupName),
+    fetchHotelsByState(lookupName),
+  ]);
+
+  if (byState.length > byCity.length) {
+    return { listings: byState, city: "", state: selectedState || lookupName };
+  }
+  if (byCity.length > 0) {
+    return { listings: byCity, city: selectedCity || lookupName, state: "" };
+  }
+  if (byState.length > 0) {
+    return { listings: byState, city: "", state: selectedState || lookupName };
+  }
+
+  return { listings: [], city: selectedCity, state: selectedState };
 }

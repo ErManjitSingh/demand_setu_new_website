@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import CategoryExploreQuickLinks from "@/components/CategoryExploreQuickLinks";
 import ListingsBookingAlert from "@/components/listings/ListingsBookingAlert";
 import ListingsFilterSidebar from "@/components/listings/ListingsFilterSidebar";
@@ -14,6 +14,12 @@ import {
   countListingsByCategory,
   parseCsvParam,
 } from "@/lib/listingFilters";
+import {
+  buildListingsUrlPreservingFilters,
+  parseListingsUrl,
+  parseTripFromSearchParams,
+} from "@/lib/bookingSearch";
+import { isListingsSlugPath } from "@/lib/listingsSlug";
 
 function ListingsFilteredCatalogClient({
   listings: allListings,
@@ -23,9 +29,15 @@ function ListingsFilteredCatalogClient({
   selectedState = "",
   locationFilterMode = false,
 }) {
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [bookingAlert, setBookingAlert] = useState("");
+
+  const pathTrip = isListingsSlugPath(pathname)
+    ? parseListingsUrl(pathname, searchParams)
+    : parseTripFromSearchParams(searchParams);
+  const category = searchParams.get("category") || pathTrip.category || initialCategory || "all";
 
   const handleBookingBlocked = useCallback((message) => {
     setBookingAlert(message);
@@ -34,7 +46,7 @@ function ListingsFilteredCatalogClient({
       block: "start",
     });
   }, []);
-  const category = searchParams.get("category") || initialCategory || "all";
+
   const prices = parseCsvParam(searchParams.get("price"));
   const stars = parseCsvParam(searchParams.get("stars"));
   const amenities = parseCsvParam(searchParams.get("amenities"));
@@ -78,9 +90,22 @@ function ListingsFilteredCatalogClient({
       if (updates.sort === "stays") {
         params.delete("sort");
       }
-      router.replace(`/listings?${params.toString()}`, { scroll: false });
+      params.delete("category");
+      params.delete("propertyType");
+      params.delete("city");
+      params.delete("state");
+
+      const nextTrip = {
+        ...pathTrip,
+        category:
+          updates.category === null || updates.category === "all"
+            ? "all"
+            : updates.category ?? pathTrip.category,
+      };
+
+      router.replace(buildListingsUrlPreservingFilters(params, nextTrip), { scroll: false });
     },
-    [router, searchParams]
+    [pathTrip, router, searchParams]
   );
 
   const onCategoryChange = useCallback(

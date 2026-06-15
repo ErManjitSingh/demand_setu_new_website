@@ -1,5 +1,5 @@
 import { nightsBetween, toDateParam } from "@/lib/dates";
-import { applyTripToParams, persistTripSearch } from "@/lib/bookingSearch";
+import { buildBookUrl, persistTripSearch } from "@/lib/bookingSearch";
 import { saveRoomSelection } from "@/lib/roomSelectionStorage";
 
 export function getEffectiveSelectedRooms(selection) {
@@ -31,9 +31,11 @@ export function saveAndNavigateToBooking({
     guests,
   };
 
-  persistTripSearch(nextTrip, { router, pathname, searchParams });
+  persistTripSearch(nextTrip, { router, pathname, searchParams, listing });
 
-  const params = applyTripToParams(new URLSearchParams(), nextTrip);
+  const bookBase = buildBookUrl(listing, nextTrip);
+  const [bookPath, bookQs = ""] = bookBase.split("?");
+  const params = new URLSearchParams(bookQs);
   params.set("total", String(pricing.total));
   params.set("subtotal", String(pricing.subtotal));
   params.set("gst", String(pricing.gst));
@@ -55,5 +57,5 @@ export function saveAndNavigateToBooking({
     nights,
   });
 
-  router.push(`/property/${listing.slug}/book?${params.toString()}`, { scroll: false });
+  router.push(`${bookPath}?${params.toString()}`, { scroll: false });
 }

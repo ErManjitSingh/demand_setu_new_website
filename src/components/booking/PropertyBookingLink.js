@@ -10,13 +10,16 @@ import {
   mergeTripFromUrlAndSession,
   persistTripSearch,
 } from "@/lib/bookingSearch";
+import { normalizeListingRef } from "@/lib/propertySlug";
 
-function getStaticPropertyHref(slug, requireBooking) {
+function getStaticPropertyHref(listingOrSlug, requireBooking) {
+  const listing = normalizeListingRef(listingOrSlug);
   const resolved = requireBooking ? fillMissingBookingDefaults({}) : {};
-  return buildPropertyUrl(slug, resolved);
+  return buildPropertyUrl(listing, resolved);
 }
 
 function PropertyBookingLinkClient({
+  listing,
   slug,
   className,
   children,
@@ -26,6 +29,10 @@ function PropertyBookingLinkClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
+  const listingRef = useMemo(
+    () => listing || normalizeListingRef(slug),
+    [listing, slug]
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -46,8 +53,8 @@ function PropertyBookingLinkClient({
     [requireBooking, trip]
   );
   const href = useMemo(
-    () => buildPropertyUrl(slug, resolvedTrip),
-    [slug, resolvedTrip]
+    () => buildPropertyUrl(listingRef, resolvedTrip),
+    [listingRef, resolvedTrip]
   );
 
   if (!requireBooking) {
@@ -72,12 +79,13 @@ function PropertyBookingLinkClient({
 }
 
 export default function PropertyBookingLink(props) {
-  const { slug, className, children, requireBooking = false } = props;
+  const { listing, slug, className, children, requireBooking = false } = props;
 
   return (
     <Suspense
       fallback={
         <PropertyBookingLinkFallback
+          listing={listing}
           slug={slug}
           className={className}
           requireBooking={requireBooking}
@@ -91,8 +99,14 @@ export default function PropertyBookingLink(props) {
   );
 }
 
-function PropertyBookingLinkFallback({ slug, className, children, requireBooking }) {
-  const href = getStaticPropertyHref(slug, requireBooking);
+function PropertyBookingLinkFallback({
+  listing,
+  slug,
+  className,
+  children,
+  requireBooking,
+}) {
+  const href = getStaticPropertyHref(listing || slug, requireBooking);
 
   return (
     <Link href={href} className={className}>

@@ -108,12 +108,16 @@ export default function StateCityLocationField({
   const pick = (item) => {
     onChange(item.name);
     if (item.kind === "city") {
-      onSelect?.({ city: item.name, state: "" });
+      onSelect?.({ city: item.name, state: "", kind: "city" });
     } else {
-      onSelect?.({ city: "", state: item.name });
+      onSelect?.({ city: "", state: item.name, kind: "state" });
     }
     if (!embedded || capEmbeddedList) setOpen(false);
     inputRef.current?.blur();
+  };
+
+  const restoreSelectedLabel = () => {
+    if (!value.trim() && selectedName) onChange(selectedName);
   };
 
   const showList = compact
@@ -237,12 +241,17 @@ export default function StateCityLocationField({
             type="search"
             value={value}
             onFocus={() => setOpen(true)}
+            onBlur={() => {
+              window.setTimeout(() => {
+                restoreSelectedLabel();
+                setOpen(false);
+              }, 150);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Escape") setOpen(false);
             }}
             onChange={(e) => {
               onChange(e.target.value);
-              if (!e.target.value.trim()) onSelect?.({ city: "", state: "" });
               setOpen(true);
             }}
             placeholder={placeholder}
@@ -284,14 +293,17 @@ export default function StateCityLocationField({
             type="text"
             value={value}
             onFocus={() => setOpen(true)}
+            onBlur={() => {
+              window.setTimeout(() => {
+                restoreSelectedLabel();
+                setOpen(false);
+              }, 150);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Escape" && !embedded) setOpen(false);
             }}
             onChange={(e) => {
               onChange(e.target.value);
-              if (!e.target.value.trim()) {
-                onSelect?.({ city: "", state: "" });
-              }
               setOpen(true);
             }}
             placeholder={placeholder}

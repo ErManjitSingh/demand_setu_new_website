@@ -8,7 +8,7 @@ import { formatPrice } from "@/lib/listings";
 import { formatShortDate, getDefaultBookingDates, nightsBetween } from "@/lib/dates";
 import { useTripSearch } from "@/hooks/useTripSearch";
 import { usePropertyRoomSelection } from "@/contexts/PropertyRoomSelectionContext";
-import { applyTripToParams, normalizeGuests, persistTripSearch } from "@/lib/bookingSearch";
+import { buildBookUrl, normalizeGuests, persistTripSearch } from "@/lib/bookingSearch";
 import { calculateBookingPrice } from "@/lib/bookingPricing";
 import {
   hasActiveRoomSelection,
@@ -92,10 +92,8 @@ function PropertyBookingCardClient({
       return;
     }
 
-    persistTripSearch(nextTrip, { router, pathname, searchParams });
-    const params = applyTripToParams(new URLSearchParams(), nextTrip);
-    params.set("price", String(nightly));
-    router.push(`/property/${listing.slug}/book?${params.toString()}`);
+    persistTripSearch(nextTrip, { router, pathname, searchParams, listing });
+    router.push(buildBookUrl(listing, nextTrip, { price: nightly }));
   };
 
   return (

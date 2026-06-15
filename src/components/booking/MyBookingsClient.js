@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { formatPrice } from "@/lib/listings";
+import { buildPropertyUrl } from "@/lib/bookingSearch";
 import { formatBookingDate } from "@/lib/dates";
 import { useGuestAuth } from "@/hooks/useGuestAuth";
 import {
@@ -110,7 +111,13 @@ function BookingCard({ booking, onPayNow, paying, payError }) {
           </p>
           {property.slug ? (
             <Link
-              href={`/property/${property.slug}`}
+              href={buildPropertyUrl({
+                slug: property.slug,
+                title: property.title,
+                category: property.category || "hotel",
+                region: property.region,
+                location: property.location,
+              })}
               className="mt-2 inline-block text-xs font-bold text-brand hover:underline"
             >
               View property →

@@ -8,6 +8,19 @@ import {
   serializeChildAgesParam,
 } from "@/lib/guestOccupancy";
 import { getApiPropertyType } from "@/lib/propertyTypes";
+import {
+  buildListingsSlugPath,
+  isListingsSlugPath,
+  isStateSlug,
+  listingsQueryFromParams,
+  parseListingsSlugPath,
+  toLocationSlug,
+} from "@/lib/listingsSlug";
+import {
+  buildPropertyPath,
+  isPropertySlugPath,
+  normalizeListingRef,
+} from "@/lib/propertySlug";
 
 const SESSION_KEY = "demand_setu_booking";
 
@@ -19,6 +32,12 @@ function notifyTripSearchUpdated() {
 }
 
 export const DEFAULT_GUESTS = { adults: 2, children: 0, rooms: 1, childAges: [] };
+
+function tripLocationSlug(trip) {
+  const city = String(trip?.city || "").trim();
+  const state = String(trip?.state || "").trim();
+  return toLocationSlug(city || state);
+}
 
 /** Fill missing check-in/out and guests with today, tomorrow, and 2 adults / 1 room. */
 export function fillMissingBookingDefaults(trip = {}) {
@@ -215,38 +234,76 @@ export function buildListingsSearchUrl({
     guests,
   };
 
-  return buildListingsUrlFromParams(applyTripToParams(params, trip));
+  return buildListingsUrlFromParams(applyTripToParams(params, trip), trip);
 }
 
-export function buildListingsUrlFromParams(params) {
-  const query = params.toString();
-  return query ? `/listings?${query}` : "/listings";
-}
-
-export function buildPropertyUrl(slug, trip = {}) {
-  const params = applyTripToParams(new URLSearchParams(), {
-    category: trip.category,
+export function buildListingsUrlFromParams(params, tripOverride = null) {
+  const source =
+    params instanceof URLSearchParams
+      ? params
+      : new URLSearchParams(params?.toString?.() || "");
+  const trip = tripOverride || parseTripFromSearchParams(source);
+  const path = buildListingsSlugPath({
+    category: trip.category ?? "all",
     city: trip.city,
     state: trip.state,
-    checkIn: trip.checkIn,
-    checkOut: trip.checkOut,
-    guests: trip.guests,
   });
-  const query = params.toString();
-  return query ? `/property/${slug}?${query}` : `/property/${slug}`;
+  const query = listingsQueryFromParams(source);
+  appendBookingToParams(query, trip);
+  const qs = query.toString();
+  return qs ? `${path}?${qs}` : path;
 }
 
-export function buildPropertyUrlPreservingTrip(searchParams, slug, trip) {
-  const params = applyTripToParams(new URLSearchParams(), trip);
-  const query = params.toString();
-  return query ? `/property/${slug}?${query}` : `/property/${slug}`;
+/** Read listings trip from slug path + query (same shape as parseTripFromSearchParams). */
+export function parseListingsUrl(pathname, searchParams) {
+  const queryTrip = parseTripFromSearchParams(searchParams);
+  const slug = parseListingsSlugPath(pathname);
+  if (!slug) return queryTrip;
+
+  const locationName = slug.locationName || "";
+  const state = queryTrip.state || "";
+  const city =
+    queryTrip.city ||
+    (state && isStateSlug(state, slug.locationSlug)
+      ? ""
+      : locationName || "");
+
+  return {
+    ...queryTrip,
+    category: searchParams?.get?.("category")
+      ? queryTrip.category
+      : slug.category || queryTrip.category,
+    city,
+    state,
+  };
 }
 
-export function buildBookUrl(slug, trip = {}, { price } = {}) {
-  const params = applyTripToParams(new URLSearchParams(), trip);
+export function buildPropertyUrl(listingOrSlug, trip = {}) {
+  const listing = normalizeListingRef(listingOrSlug);
+  const path = buildPropertyPath(listing, trip);
+  const query = new URLSearchParams();
+  appendBookingToParams(query, trip);
+  const qs = query.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
+export function buildPropertyUrlPreservingTrip(searchParams, listingOrSlug, trip) {
+  const listing = normalizeListingRef(listingOrSlug);
+  const path = buildPropertyPath(listing, trip);
+  const query = new URLSearchParams();
+  appendBookingToParams(query, trip);
+  const qs = query.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
+export function buildBookUrl(listingOrSlug, trip = {}, { price } = {}) {
+  const listing = normalizeListingRef(listingOrSlug);
+  const path = `${buildPropertyPath(listing, trip)}/book`;
+  const params = new URLSearchParams();
+  appendBookingToParams(params, trip);
   if (price != null && price !== "") params.set("price", String(price));
   const query = params.toString();
-  return query ? `/property/${slug}/book?${query}` : `/property/${slug}/book`;
+  return query ? `${path}?${query}` : path;
 }
 
 const INVENTORY_BOOKING_PARAMS = ["inventory", "total", "subtotal", "gst", "roomsSelected"];
@@ -272,8 +329,11 @@ export function appendInventoryBookingToParams(params, sourceParams) {
   return params;
 }
 
-export function buildBookUrlPreservingTrip(searchParams, slug, trip, { price } = {}) {
-  const params = applyTripToParams(new URLSearchParams(), trip);
+export function buildBookUrlPreservingTrip(searchParams, listingOrSlug, trip, { price } = {}) {
+  const listing = normalizeListingRef(listingOrSlug);
+  const path = `${buildPropertyPath(listing, trip)}/book`;
+  const params = new URLSearchParams();
+  appendBookingToParams(params, trip);
   const source =
     searchParams instanceof URLSearchParams
       ? searchParams
@@ -287,7 +347,7 @@ export function buildBookUrlPreservingTrip(searchParams, slug, trip, { price } =
   }
 
   const query = params.toString();
-  return query ? `/property/${slug}/book?${query}` : `/property/${slug}/book`;
+  return query ? `${path}?${query}` : path;
 }
 
 export function saveTripSearch(trip) {
@@ -334,12 +394,20 @@ export function persistTripSearch(trip, sync) {
 
   const propertyMatch = sync.pathname.match(/^\/property\/([^/]+)$/);
   if (propertyMatch) {
-    const next = buildPropertyUrlPreservingTrip(params, propertyMatch[1], merged);
+    const next = buildPropertyUrlPreservingTrip(params, { slug: propertyMatch[1] }, merged);
     sync.router.replace(next, { scroll: false });
     return merged;
   }
 
-  if (sync.pathname === "/listings") {
+  if (isPropertySlugPath(sync.pathname)) {
+    if (sync.listing) {
+      const next = buildPropertyUrlPreservingTrip(params, sync.listing, merged);
+      sync.router.replace(next, { scroll: false });
+    }
+    return merged;
+  }
+
+  if (isListingsSlugPath(sync.pathname) || sync.pathname === "/listings") {
     const next = buildListingsUrlPreservingFilters(params, merged);
     sync.router.replace(next, { scroll: false });
   }
@@ -383,35 +451,79 @@ export function loadBookingSession() {
 }
 
 /** Fill missing URL trip fields from session (URL wins when present). */
-export function mergeTripFromUrlAndSession(searchParams, session) {
-  const url = parseTripFromSearchParams(searchParams);
+export function mergeTripFromUrlAndSession(searchParams, session, pathname = "") {
+  const url = isListingsSlugPath(pathname)
+    ? parseListingsUrl(pathname, searchParams)
+    : parseTripFromSearchParams(searchParams);
   if (!session) return url;
 
   const hasLocation =
-    hasSearchParam(searchParams, "city") || hasSearchParam(searchParams, "state");
+    hasSearchParam(searchParams, "city") ||
+    hasSearchParam(searchParams, "state") ||
+    Boolean(parseListingsSlugPath(pathname)?.locationSlug);
   const hasCheckIn = hasSearchParam(searchParams, "checkIn");
   const hasCheckOut = hasSearchParam(searchParams, "checkOut");
   const hasGuests =
     hasSearchParam(searchParams, "adults") &&
     hasSearchParam(searchParams, "rooms");
-  const hasCategory = hasSearchParam(searchParams, "category");
+  const hasCategory =
+    hasSearchParam(searchParams, "category") ||
+    isListingsSlugPath(pathname);
+
+  let city = hasLocation ? url.city : session.city || url.city;
+  let state = hasLocation ? url.state : session.state || url.state;
+
+  const slug = isListingsSlugPath(pathname) ? parseListingsSlugPath(pathname) : null;
+  if (
+    slug?.locationSlug &&
+    session?.state &&
+    isStateSlug(session.state, slug.locationSlug) &&
+    !url.state
+  ) {
+    city = "";
+    state = session.state;
+  }
 
   return {
     category: hasCategory ? url.category : session.category || url.category,
-    city: hasLocation ? url.city : session.city || url.city,
-    state: hasLocation ? url.state : session.state || url.state,
+    city,
+    state,
     checkIn: hasCheckIn ? url.checkIn : session.checkIn || url.checkIn,
     checkOut: hasCheckOut ? url.checkOut : session.checkOut || url.checkOut,
     guests: hasGuests ? url.guests : session.guests || url.guests,
   };
 }
 
-export function tripParamsNeedSync(searchParams, mergedTrip) {
-  const url = parseTripFromSearchParams(searchParams);
+export function tripParamsNeedSync(searchParams, mergedTrip, pathname = "") {
+  const url = isListingsSlugPath(pathname)
+    ? parseListingsUrl(pathname, searchParams)
+    : parseTripFromSearchParams(searchParams);
 
-  if ((mergedTrip.city || "") !== (url.city || "")) return true;
-  if ((mergedTrip.state || "") !== (url.state || "")) return true;
-  if ((mergedTrip.category || "all") !== (url.category || "all")) return true;
+  if (isListingsSlugPath(pathname)) {
+    const slug = parseListingsSlugPath(pathname);
+    if (slug?.locationSlug) {
+      if (hasSearchParam(searchParams, "state") || hasSearchParam(searchParams, "city")) {
+        return true;
+      }
+      if (tripLocationSlug(mergedTrip) !== slug.locationSlug) return true;
+    }
+    if (hasSearchParam(searchParams, "category")) {
+      return true;
+    }
+    if ((mergedTrip.category || "all") !== (url.category || "all")) return true;
+  } else if (isPropertySlugPath(pathname)) {
+    if (
+      hasSearchParam(searchParams, "state") ||
+      hasSearchParam(searchParams, "city") ||
+      hasSearchParam(searchParams, "category")
+    ) {
+      return true;
+    }
+  } else {
+    if ((mergedTrip.city || "") !== (url.city || "")) return true;
+    if ((mergedTrip.state || "") !== (url.state || "")) return true;
+    if ((mergedTrip.category || "all") !== (url.category || "all")) return true;
+  }
 
   const urlIn = url.checkIn?.getTime?.() ?? null;
   const mergedIn = mergedTrip.checkIn?.getTime?.() ?? null;
@@ -446,5 +558,5 @@ export function buildListingsUrlPreservingFilters(searchParams, trip) {
     searchParams instanceof URLSearchParams
       ? searchParams
       : new URLSearchParams(searchParams?.toString?.() || "");
-  return buildListingsUrlFromParams(applyTripToParams(base, trip));
+  return buildListingsUrlFromParams(applyTripToParams(base, trip), trip);
 }

@@ -5,6 +5,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CATEGORIES } from "@/lib/listings";
 import { ALL_STAYS_CATEGORY } from "@/lib/categoryExplore";
 import { useCategoryExplore } from "@/hooks/useCategoryExplore";
+import {
+  buildListingsUrlPreservingFilters,
+  parseListingsUrl,
+  parseTripFromSearchParams,
+} from "@/lib/bookingSearch";
+import { isListingsSlugPath } from "@/lib/listingsSlug";
 
 function CategoryPillsClient({ activeCategory = "all" }) {
   const pathname = usePathname();
@@ -12,10 +18,17 @@ function CategoryPillsClient({ activeCategory = "all" }) {
   const searchParams = useSearchParams();
   const { openExplore, modal } = useCategoryExplore();
 
-  const hasLocation =
-    pathname === "/listings" &&
-    (Boolean(searchParams.get("city")?.trim()) ||
-      Boolean(searchParams.get("state")?.trim()));
+  const hasLocation = (() => {
+    if (isListingsSlugPath(pathname)) {
+      const trip = parseListingsUrl(pathname, searchParams);
+      return Boolean(trip.city || trip.state);
+    }
+    return (
+      pathname === "/listings" &&
+      (Boolean(searchParams.get("city")?.trim()) ||
+        Boolean(searchParams.get("state")?.trim()))
+    );
+  })();
 
   const pillClass = (active) =>
     active
@@ -23,15 +36,19 @@ function CategoryPillsClient({ activeCategory = "all" }) {
       : "bg-white text-foreground shadow-md shadow-stone-200/60 ring-1 ring-stone-900/5 hover:ring-brand/30 hover:shadow-lg";
 
   const setCategory = (catId) => {
+    const trip = isListingsSlugPath(pathname)
+      ? parseListingsUrl(pathname, searchParams)
+      : parseTripFromSearchParams(searchParams);
+    const nextTrip = {
+      ...trip,
+      category: catId === "all" ? "all" : catId,
+    };
     const params = new URLSearchParams(searchParams.toString());
-    if (catId === "all") {
-      params.delete("category");
-      params.delete("propertyType");
-    } else {
-      params.set("category", catId);
-      params.delete("propertyType");
-    }
-    router.replace(`/listings?${params.toString()}`, { scroll: false });
+    params.delete("category");
+    params.delete("propertyType");
+    params.delete("city");
+    params.delete("state");
+    router.replace(buildListingsUrlPreservingFilters(params, nextTrip), { scroll: false });
   };
 
   const handleClick = (catId) => {

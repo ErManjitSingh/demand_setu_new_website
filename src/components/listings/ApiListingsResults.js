@@ -7,15 +7,16 @@ export default async function ApiListingsResults({
   activeCat,
   label,
 }) {
-  const listings = await fetchListingsForLocation({ city, state });
+  const { listings, city: displayCity, state: displayState } =
+    await fetchListingsForLocation({ city, state });
 
   return (
     <ListingsFilteredCatalog
       listings={listings}
       activeCat={activeCat}
       label={label}
-      selectedCity={city}
-      selectedState={state}
+      selectedCity={displayCity}
+      selectedState={displayState}
       locationFilterMode
     />
   );

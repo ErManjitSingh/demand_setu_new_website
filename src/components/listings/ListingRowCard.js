@@ -20,6 +20,7 @@ export default function ListingRowCard({
   return (
     <PropertyBookingLink
       slug={listing.slug}
+      listing={listing}
       requireBooking={requireBooking}
       onBlocked={onBookingBlocked}
       className={`card-shine group relative flex overflow-hidden bg-white transition duration-300 active:scale-[0.995] ${

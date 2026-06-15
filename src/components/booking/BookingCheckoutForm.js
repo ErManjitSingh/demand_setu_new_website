@@ -15,7 +15,7 @@ import {
   toDateParam,
 } from "@/lib/dates";
 import { calculateBookingPrice } from "@/lib/bookingPricing";
-import { normalizeGuests } from "@/lib/bookingSearch";
+import { buildPropertyUrl, normalizeGuests } from "@/lib/bookingSearch";
 import { serializeChildAgesParam } from "@/lib/guestOccupancy";
 import { useGuestAuth } from "@/hooks/useGuestAuth";
 import { buildCheckoutApiPayload } from "@/lib/checkoutPayload";
@@ -134,7 +134,7 @@ function BookingCheckoutFormClient({
   }, [hasInventorySelection, roomBooking, nightly, nights]);
 
   const { subtotal, gst, total, lineItems } = pricing;
-  const backToProperty = propertyHref || `/property/${listing.slug}`;
+  const backToProperty = propertyHref || buildPropertyUrl(listing);
   const daysAway = daysUntil(checkIn);
   const locationScore = (listing.rating * 2).toFixed(1);
   const guestLabel = formatGuestsRoomsLabel({ adults, children, rooms });

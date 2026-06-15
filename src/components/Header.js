@@ -5,6 +5,12 @@ import { usePathname } from "next/navigation";
 import { LogoLink } from "@/components/Logo";
 import HeaderSearchBar from "@/components/HeaderSearchBar";
 import { getListingBySlug } from "@/lib/listings";
+import { SEGMENT_TO_CATEGORY, fromLocationSlug } from "@/lib/listingsSlug";
+import {
+  isPropertySlugPath,
+  parsePropertySegment,
+  parsePropertySlugPath,
+} from "@/lib/propertySlug";
 import { useCategoryExplore } from "@/hooks/useCategoryExplore";
 import { useGuestAuth } from "@/hooks/useGuestAuth";
 
@@ -18,19 +24,43 @@ const navLinks = [
 
 export default function Header() {
   const { openExplore, modal } = useCategoryExplore();
-  const pathname = usePathname();
-  const isPropertyDetailPage = /^\/property\/[^/]+$/.test(pathname || "");
-  const slug = isPropertyDetailPage
-    ? pathname.replace(/^\/property\//, "").split("/")[0]
-    : null;
-  const listing = slug ? getListingBySlug(slug) : null;
-  const defaultState = listing?.region ?? "";
-  const defaultCity = listing?.location?.split(",")[0]?.trim() ?? "";
+  const pathname = usePathname() || "";
+  const legacyMatch = pathname.match(/^\/property\/([^/]+)$/);
+  const parsedProperty = parsePropertySlugPath(pathname);
+  const isPropertyDetailPage =
+    Boolean(legacyMatch) || Boolean(parsedProperty && !parsedProperty.isBook);
+
+  let defaultState = "";
+  let defaultCity = "";
+  let category = "hotel";
+
+  if (legacyMatch) {
+    const listing = getListingBySlug(legacyMatch[1]);
+    defaultState = listing?.region ?? "";
+    defaultCity = listing?.location?.split(",")[0]?.trim() ?? "";
+    category = listing?.category || "hotel";
+  } else if (parsedProperty && !parsedProperty.isBook) {
+    category = SEGMENT_TO_CATEGORY[parsedProperty.categorySegment] || "hotel";
+    const locationName = fromLocationSlug(parsedProperty.locationSlug);
+    const { internalSlug } = parsePropertySegment(parsedProperty.propertySegment);
+    const listing = internalSlug ? getListingBySlug(internalSlug) : null;
+
+    if (listing) {
+      defaultState = listing.region ?? "";
+      defaultCity = listing.location?.split(",")[0]?.trim() ?? "";
+      category = listing.category || category;
+    } else {
+      defaultState = locationName;
+      defaultCity = "";
+    }
+  }
+
+  const isPropertyStyleHeader = isPropertyDetailPage || isPropertySlugPath(pathname);
   return (
     <header className="sticky top-0 z-50">
       <div
         className={`overflow-visible border-b shadow-sm ${
-          isPropertyDetailPage
+          isPropertyStyleHeader
             ? "border-[#e0e0e0] bg-white"
             : "glass border-white/60 shadow-stone-200/40"
         }`}
@@ -72,7 +102,7 @@ export default function Header() {
               <HeaderSearchBar
                 defaultState={defaultState}
                 defaultCity={defaultCity}
-                category={listing?.category || "all"}
+                category={category}
               />
             </div>
           )}

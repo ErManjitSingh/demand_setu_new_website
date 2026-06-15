@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { parseDateParam } from "@/lib/dates";
 import {
@@ -19,8 +19,9 @@ function guestsKey(guests) {
 
 /** Resolves trip from URL query params + sessionStorage (session fills missing URL fields). */
 export function useTripSearch(serverFallback) {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const queryKey = searchParams.toString();
+  const queryKey = `${pathname}?${searchParams.toString()}`;
   const [sessionVersion, setSessionVersion] = useState(0);
   const [mounted, setMounted] = useState(false);
 
@@ -49,7 +50,7 @@ export function useTripSearch(serverFallback) {
     };
 
     const session = mounted ? loadTripSearch() : null;
-    const merged = mergeTripFromUrlAndSession(searchParams, session);
+    const merged = mergeTripFromUrlAndSession(searchParams, session, pathname);
 
     return {
       category: merged.category || fallback.category || "all",
@@ -66,6 +67,7 @@ export function useTripSearch(serverFallback) {
         "",
     };
   }, [
+    pathname,
     queryKey,
     mounted,
     sessionVersion,

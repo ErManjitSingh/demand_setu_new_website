@@ -1,80 +1,12 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { buildApiUrl } from "@/lib/apiConfig";
+import {
+  normalizeCityName,
+  normalizeLocationList,
+  normalizeStateName,
+} from "@/lib/locationCatalog";
 
 const CACHE_TTL_MS = 30 * 60 * 1000;
-
-function normalizeLocations(rawItems) {
-  const seen = new Set();
-  const out = [];
-
-  for (const item of rawItems || []) {
-    const value = String(item || "").trim();
-    if (!value) continue;
-    const dedupeKey = value.toLowerCase();
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-    out.push(value);
-  }
-
-  return out.sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
-}
-
-function toTitleCase(value) {
-  return value
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => {
-      const lower = part.toLowerCase();
-      if (lower === "&") return "&";
-      return lower.charAt(0).toUpperCase() + lower.slice(1);
-    })
-    .join(" ");
-}
-
-function normalizeStateName(raw) {
-  const cleaned = String(raw || "")
-    .replace(/^[,\s]+/, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!cleaned) return "";
-
-  const lowered = cleaned.toLowerCase();
-  const aliases = {
-    delhi: "Delhi",
-    gujrat: "Gujarat",
-    kerela: "Kerala",
-    himachal: "Himachal Pradesh",
-    "himachal prades": "Himachal Pradesh",
-    arunanchal: "Arunachal Pradesh",
-    meghalya: "Meghalaya",
-    maharastra: "Maharashtra",
-    "jammu and kashmir": "Jammu & Kashmir",
-    srilanka: "Sri Lanka",
-    tamilnadu: "Tamil Nadu",
-    uttrakhand: "Uttarakhand",
-    leh: "Ladakh",
-    "leh ladakh": "Ladakh",
-  };
-
-  if (aliases[lowered]) return aliases[lowered];
-  return toTitleCase(cleaned);
-}
-
-function normalizeStates(rawItems) {
-  const seen = new Set();
-  const out = [];
-
-  for (const item of rawItems || []) {
-    const normalized = normalizeStateName(item);
-    if (!normalized) continue;
-    const key = normalized.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(normalized);
-  }
-
-  return out.sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
-}
 
 export const fetchHotelCities = createAsyncThunk(
   "locations/fetchHotelCities",
@@ -93,7 +25,7 @@ export const fetchHotelCities = createAsyncThunk(
       throw new Error("Invalid city API response");
     }
 
-    return normalizeLocations(payload.data);
+    return normalizeLocationList(payload.data, normalizeCityName);
   },
   {
     condition: (_, { getState }) => {
@@ -123,7 +55,7 @@ export const fetchHotelStates = createAsyncThunk(
       throw new Error("Invalid states API response");
     }
 
-    return normalizeStates(payload.data);
+    return normalizeLocationList(payload.data, normalizeStateName);
   },
   {
     condition: (_, { getState }) => {

@@ -1,5 +1,5 @@
 import { CATEGORIES } from "@/lib/listings";
-import { getApiPropertyType } from "@/lib/propertyTypes";
+import { buildListingsSearchUrl } from "@/lib/bookingSearch";
 
 export const ALL_STAYS_CATEGORY = {
   id: "all",
@@ -16,20 +16,9 @@ export function resolveExploreCategory(categoryOrId) {
 }
 
 export function buildExploreListingsUrl({ categoryId = "all", city = "", state = "" } = {}) {
-  const params = new URLSearchParams();
-  const id = String(categoryId || "all");
-
-  if (id !== "all") {
-    params.set("category", id);
-    const propertyType = getApiPropertyType(id);
-    if (propertyType) params.set("propertyType", propertyType);
-  }
-
-  const selectedCity = String(city || "").trim();
-  const selectedState = String(state || "").trim();
-  if (selectedCity) params.set("city", selectedCity);
-  if (selectedState) params.set("state", selectedState);
-
-  const query = params.toString();
-  return query ? `/listings?${query}` : "/listings";
+  return buildListingsSearchUrl({
+    category: categoryId,
+    city,
+    state,
+  });
 }

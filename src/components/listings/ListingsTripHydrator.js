@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   buildListingsUrlPreservingFilters,
   fillMissingBookingDefaults,
@@ -10,19 +10,19 @@ import {
   saveTripSearch,
   tripParamsNeedSync,
 } from "@/lib/bookingSearch";
+import { isListingsSlugPath } from "@/lib/listingsSlug";
 
-/**
- * On /listings, merges the last home/explore/header search from sessionStorage
- * into the URL when query params are missing (keeps filter params intact).
- */
 export default function ListingsTripHydrator() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const lastSynced = useRef("");
 
   useEffect(() => {
+    if (!isListingsSlugPath(pathname) && pathname !== "/listings") return;
+
     const session = loadTripSearch();
-    const merged = mergeTripFromUrlAndSession(searchParams, session);
+    const merged = mergeTripFromUrlAndSession(searchParams, session, pathname);
     const hasLocation = Boolean(merged.city || merged.state);
     const hasDates = Boolean(merged.checkIn && merged.checkOut);
 
@@ -32,14 +32,14 @@ export default function ListingsTripHydrator() {
 
     saveTripSearch(trip);
 
-    if (!tripParamsNeedSync(searchParams, trip)) return;
+    if (!tripParamsNeedSync(searchParams, trip, pathname)) return;
 
     const nextUrl = buildListingsUrlPreservingFilters(searchParams, trip);
     if (lastSynced.current === nextUrl) return;
     lastSynced.current = nextUrl;
 
     router.replace(nextUrl, { scroll: false });
-  }, [router, searchParams]);
+  }, [pathname, router, searchParams]);
 
   return null;
 }

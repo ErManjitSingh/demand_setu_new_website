@@ -97,6 +97,7 @@ export default function DestinationStatesSection() {
               <Link
                 key={stateName}
                 href={buildListingsSearchUrl({
+                  category: "hotel",
                   state: stateName,
                   checkIn: defaultDates.checkIn,
                   checkOut: defaultDates.checkOut,
@@ -104,6 +105,7 @@ export default function DestinationStatesSection() {
                 })}
                 onClick={() =>
                   persistTripSearch({
+                    category: "hotel",
                     state: stateName,
                     checkIn: defaultDates.checkIn,
                     checkOut: defaultDates.checkOut,

@@ -2,18 +2,25 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 import BookingDateRangePicker from "@/components/booking/BookingDateRangePicker";
 import GuestsRoomsPicker from "@/components/booking/GuestsRoomsPicker";
 import StateCityLocationField from "@/components/location/StateCityLocationField";
 import { parseDateParam } from "@/lib/dates";
 import {
+  applyLocationKind,
+  resolveLocationFromCatalog,
+} from "@/lib/locationCatalog";
+import {
   buildListingsUrlPreservingFilters,
   DEFAULT_GUESTS,
   loadTripSearch,
   parseGuestsFromParams,
+  parseListingsUrl,
   persistTripSearch,
   validateTripSearch,
 } from "@/lib/bookingSearch";
+import { isListingsSlugPath } from "@/lib/listingsSlug";
 
 function guestsFromParts(adults, children, rooms) {
   return {
@@ -23,15 +30,18 @@ function guestsFromParts(adults, children, rooms) {
   };
 }
 
-/** Read trip from URL (client-safe; dates are real Date objects). */
-function readTripFromParams(searchParams) {
-  return {
-    city: searchParams.get("city")?.trim() || "",
-    state: searchParams.get("state")?.trim() || "",
-    checkIn: parseDateParam(searchParams.get("checkIn")),
-    checkOut: parseDateParam(searchParams.get("checkOut")),
-    guests: parseGuestsFromParams(searchParams),
-  };
+/** Read trip from slug path + query. */
+function readTripFromUrl(pathname, searchParams) {
+  const trip = isListingsSlugPath(pathname)
+    ? parseListingsUrl(pathname, searchParams)
+    : {
+        city: searchParams.get("city")?.trim() || "",
+        state: searchParams.get("state")?.trim() || "",
+        checkIn: parseDateParam(searchParams.get("checkIn")),
+        checkOut: parseDateParam(searchParams.get("checkOut")),
+        guests: parseGuestsFromParams(searchParams),
+      };
+  return trip;
 }
 
 export default function ListingsHeroSearch({
@@ -47,7 +57,27 @@ export default function ListingsHeroSearch({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const queryKey = searchParams.toString();
+  const queryKey = `${pathname}?${searchParams.toString()}`;
+  const { cities, states } = useSelector((s) => s.locations);
+  const locationCatalog = useMemo(() => ({ cities, states }), [cities, states]);
+
+  const resolveTripLocation = useCallback(
+    (nextCity, nextState, kind = null) => {
+      if (nextState && !nextCity) return { city: "", state: nextState };
+      if (nextCity && !nextState) return { city: nextCity, state: "" };
+
+      const label = nextCity || nextState;
+      if (!label) return { city: "", state: "" };
+
+      const resolved = resolveLocationFromCatalog(label, locationCatalog);
+      const withKind = applyLocationKind(
+        resolved,
+        kind || (nextState ? "state" : "city")
+      );
+      return { city: withKind.city, state: withKind.state };
+    },
+    [locationCatalog]
+  );
 
   const serverFallback = useMemo(
     () => ({
@@ -77,7 +107,7 @@ export default function ListingsHeroSearch({
   const [searchError, setSearchError] = useState("");
 
   useEffect(() => {
-    const fromUrl = readTripFromParams(searchParams);
+    const fromUrl = readTripFromUrl(pathname, searchParams);
     const hasUrlDates =
       searchParams.has("checkIn") && searchParams.has("checkOut");
     const hasUrlGuests = searchParams.has("adults");
@@ -114,6 +144,7 @@ export default function ListingsHeroSearch({
       setGuests(session?.guests || serverFallback.guests);
     }
   }, [
+    pathname,
     queryKey,
     searchParams,
     serverFallback,
@@ -146,19 +177,21 @@ export default function ListingsHeroSearch({
     ]
   );
 
-  const onLocationSelect = ({ city: c, state: s }) => {
-    setCity(c);
-    setState(s);
-    setQuery(c || s);
+  const onLocationSelect = ({ city: c, state: s, kind }) => {
+    const resolved = resolveTripLocation(c, s, kind);
+    setCity(resolved.city);
+    setState(resolved.state);
+    setQuery(resolved.city || resolved.state);
     if (searchError) setSearchError("");
-    syncTripEdit({ city: c, state: s });
+    syncTripEdit({ city: resolved.city, state: resolved.state });
   };
 
   const handleSearch = () => {
+    const resolvedLocation = resolveTripLocation(city, state);
     const trip = {
       category: category || "all",
-      city,
-      state,
+      city: resolvedLocation.city,
+      state: resolvedLocation.state,
       checkIn,
       checkOut,
       guests,
@@ -171,6 +204,9 @@ export default function ListingsHeroSearch({
     }
 
     setSearchError("");
+    setCity(trip.city);
+    setState(trip.state);
+    setQuery(trip.city || trip.state);
     persistTripSearch(trip, { router, pathname, searchParams });
 
     router.push(buildListingsUrlPreservingFilters(searchParams, trip));

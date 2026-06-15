@@ -1,11 +1,16 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSelector } from "react-redux";
 import BookingDateRangePicker from "@/components/booking/BookingDateRangePicker";
 import GuestsRoomsPicker from "@/components/booking/GuestsRoomsPicker";
 import StateCityLocationField from "@/components/location/StateCityLocationField";
 import { useTripSearch } from "@/hooks/useTripSearch";
+import {
+  applyLocationKind,
+  resolveLocationFromCatalog,
+} from "@/lib/locationCatalog";
 import {
   buildListingsSearchUrl,
   DEFAULT_GUESTS,
@@ -21,6 +26,8 @@ function SearchBarClient({
 }) {
   const router = useRouter();
   const trip = useTripSearch({ category });
+  const { cities, states } = useSelector((s) => s.locations);
+  const locationCatalog = useMemo(() => ({ cities, states }), [cities, states]);
   const [checkIn, setCheckIn] = useState(trip.checkIn);
   const [checkOut, setCheckOut] = useState(trip.checkOut);
   const [guests, setGuests] = useState(trip.guests || { ...DEFAULT_GUESTS });
@@ -61,18 +68,41 @@ function SearchBarClient({
     });
   }, [tripLocation, trip.city, trip.state, tripCheckInKey, tripCheckOutKey, tripGuestsKey]);
 
-  const onLocationSelect = ({ city: c, state: s }) => {
-    setCity(c);
-    setState(s);
-    setQuery(c || s);
+  const resolveTripLocation = useCallback(
+    (nextCity, nextState, kind = null) => {
+      if (nextState && !nextCity) return { city: "", state: nextState };
+      if (nextCity && !nextState) return { city: nextCity, state: "" };
+
+      const label = nextCity || nextState;
+      if (!label) return { city: "", state: "" };
+
+      const resolved = resolveLocationFromCatalog(label, locationCatalog);
+      const withKind = applyLocationKind(
+        resolved,
+        kind || (nextState ? "state" : "city")
+      );
+      return { city: withKind.city, state: withKind.state };
+    },
+    [locationCatalog]
+  );
+
+  const onLocationSelect = ({ city: c, state: s, kind }) => {
+    const resolved = resolveTripLocation(c, s, kind);
+    setCity(resolved.city);
+    setState(resolved.state);
+    setQuery(resolved.city || resolved.state);
     if (searchError) setSearchError("");
   };
 
   const runSearch = () => {
+    const resolvedLocation = resolveTripLocation(city, state);
+    const searchCategory =
+      category ?? (listingsPage ? trip.category || "all" : "hotel");
+
     const nextTrip = {
-      category: category || trip.category || "all",
-      city,
-      state,
+      category: searchCategory,
+      city: resolvedLocation.city,
+      state: resolvedLocation.state,
       checkIn,
       checkOut,
       guests,
@@ -85,6 +115,9 @@ function SearchBarClient({
     }
 
     setSearchError("");
+    setCity(nextTrip.city);
+    setState(nextTrip.state);
+    setQuery(nextTrip.city || nextTrip.state);
     persistTripSearch(nextTrip);
 
     router.push(
