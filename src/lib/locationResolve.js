@@ -5,6 +5,7 @@ import {
   normalizeCityName,
   normalizeLocationList,
   normalizeStateName,
+  normalizeTripLocation,
   resolveLocationFromCatalog,
 } from "@/lib/locationCatalog";
 import { toLocationSlug } from "@/lib/listingsSlug";
@@ -66,29 +67,44 @@ export async function resolveLocationName(name, kind = null) {
 export async function resolveListingsLocationParams(params, locationSlug = "", kind = null) {
   const city = String(params?.city || "").trim();
   const state = String(params?.state || "").trim();
-  const slug = String(locationSlug || toLocationSlug(city || state)).trim().toLowerCase();
+  const catalog = await getLocationCatalog();
 
   if (state && city && toLocationSlug(city) !== toLocationSlug(state)) {
-    const catalog = await getLocationCatalog();
+    const cityNorm = normalizeTripLocation({ city, state: "", kind: "city" }, catalog);
+    const stateNorm = normalizeTripLocation({ city: "", state, kind: "state" }, catalog);
     return {
       ...params,
-      city: resolveLocationFromCatalog(city, catalog).city || city,
-      state: resolveLocationFromCatalog(state, catalog).state || state,
+      city: cityNorm.city,
+      state: stateNorm.state,
+      locationKind: "city",
     };
   }
 
-  if (!slug) return params;
+  const slug = String(locationSlug || toLocationSlug(city || state)).trim().toLowerCase();
+  const slugOnly = Boolean(slug) && !state && !city;
+
+  if (slugOnly) {
+    const resolved = await resolveLocationFromSlug(slug, kind || params?.locationKind);
+    return {
+      ...params,
+      city: resolved.city,
+      state: resolved.state,
+      locationKind: resolved.kind,
+    };
+  }
 
   const inferredKind =
-    kind || (state && !city ? "state" : city && !state ? "city" : null);
-  const resolved = await resolveLocationFromSlug(slug, inferredKind);
+    kind ||
+    params?.locationKind ||
+    (state && !city ? "state" : null) ||
+    (city && !state ? "city" : null);
 
-  if (resolved.kind === "state") {
-    return { ...params, city: "", state: resolved.state };
-  }
-  if (resolved.kind === "city") {
-    return { ...params, city: resolved.city, state: "" };
-  }
+  const normalized = normalizeTripLocation({ city, state, kind: inferredKind }, catalog);
 
-  return { ...params, city: resolved.city, state: resolved.state };
+  return {
+    ...params,
+    city: normalized.city,
+    state: normalized.state,
+    locationKind: normalized.kind,
+  };
 }

@@ -14,6 +14,7 @@ import {
   DEFAULT_GUESTS,
   persistTripSearch,
 } from "@/lib/bookingSearch";
+import { logSearchSelection } from "@/lib/logSearchSelection";
 import { getDefaultBookingDates } from "@/lib/dates";
 
 export default function DestinationStatesSection() {
@@ -103,15 +104,19 @@ export default function DestinationStatesSection() {
                   checkOut: defaultDates.checkOut,
                   guests: DEFAULT_GUESTS,
                 })}
-                onClick={() =>
-                  persistTripSearch({
+                onClick={() => {
+                  const trip = {
                     category: "hotel",
                     state: stateName,
+                    city: "",
+                    locationKind: "state",
                     checkIn: defaultDates.checkIn,
                     checkOut: defaultDates.checkOut,
                     guests: DEFAULT_GUESTS,
-                  })
-                }
+                  };
+                  logSearchSelection("state-click", trip);
+                  persistTripSearch(trip);
+                }}
                 data-state-card="true"
                 className="card-shine group relative w-[140px] shrink-0 overflow-hidden rounded-2xl shadow-lg ring-1 ring-stone-900/5 sm:w-[160px]"
               >

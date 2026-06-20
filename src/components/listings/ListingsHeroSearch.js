@@ -2,15 +2,11 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
 import BookingDateRangePicker from "@/components/booking/BookingDateRangePicker";
 import GuestsRoomsPicker from "@/components/booking/GuestsRoomsPicker";
 import StateCityLocationField from "@/components/location/StateCityLocationField";
+import { useTripLocationSearch } from "@/hooks/useTripLocationSearch";
 import { parseDateParam } from "@/lib/dates";
-import {
-  applyLocationKind,
-  resolveLocationFromCatalog,
-} from "@/lib/locationCatalog";
 import {
   buildListingsUrlPreservingFilters,
   DEFAULT_GUESTS,
@@ -48,6 +44,7 @@ export default function ListingsHeroSearch({
   category,
   initialCity = "",
   initialState = "",
+  initialLocationKind = null,
   initialCheckIn = "",
   initialCheckOut = "",
   initialAdults = DEFAULT_GUESTS.adults,
@@ -58,31 +55,15 @@ export default function ListingsHeroSearch({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryKey = `${pathname}?${searchParams.toString()}`;
-  const { cities, states } = useSelector((s) => s.locations);
-  const locationCatalog = useMemo(() => ({ cities, states }), [cities, states]);
-
-  const resolveTripLocation = useCallback(
-    (nextCity, nextState, kind = null) => {
-      if (nextState && !nextCity) return { city: "", state: nextState };
-      if (nextCity && !nextState) return { city: nextCity, state: "" };
-
-      const label = nextCity || nextState;
-      if (!label) return { city: "", state: "" };
-
-      const resolved = resolveLocationFromCatalog(label, locationCatalog);
-      const withKind = applyLocationKind(
-        resolved,
-        kind || (nextState ? "state" : "city")
-      );
-      return { city: withKind.city, state: withKind.state };
-    },
-    [locationCatalog]
-  );
+  const { resolveLocation, logSearch } = useTripLocationSearch();
 
   const serverFallback = useMemo(
     () => ({
       city: initialCity,
       state: initialState,
+      locationKind:
+        initialLocationKind ||
+        (initialState ? "state" : initialCity ? "city" : null),
       checkIn: parseDateParam(initialCheckIn),
       checkOut: parseDateParam(initialCheckOut),
       guests: guestsFromParts(initialAdults, initialChildren, initialRooms),
@@ -90,6 +71,7 @@ export default function ListingsHeroSearch({
     [
       initialCity,
       initialState,
+      initialLocationKind,
       initialCheckIn,
       initialCheckOut,
       initialAdults,
@@ -101,6 +83,7 @@ export default function ListingsHeroSearch({
   const [query, setQuery] = useState(initialCity || initialState);
   const [city, setCity] = useState(initialCity);
   const [state, setState] = useState(initialState);
+  const [locationKind, setLocationKind] = useState(serverFallback.locationKind);
   const [checkIn, setCheckIn] = useState(serverFallback.checkIn);
   const [checkOut, setCheckOut] = useState(serverFallback.checkOut);
   const [guests, setGuests] = useState(serverFallback.guests);
@@ -108,54 +91,74 @@ export default function ListingsHeroSearch({
 
   useEffect(() => {
     const fromUrl = readTripFromUrl(pathname, searchParams);
+    const session = loadTripSearch();
     const hasUrlDates =
       searchParams.has("checkIn") && searchParams.has("checkOut");
     const hasUrlGuests = searchParams.has("adults");
     const hasUrlLocation = Boolean(fromUrl.city || fromUrl.state);
 
+    const applyNormalizedLocation = (cityVal, stateVal, kindVal) => {
+      const normalized = resolveLocation({
+        city: cityVal,
+        state: stateVal,
+        kind: kindVal,
+      });
+      setCity(normalized.city);
+      setState(normalized.state);
+      setLocationKind(normalized.kind);
+      setQuery(normalized.city || normalized.state);
+    };
+
     if (hasUrlLocation) {
-      setCity(fromUrl.city);
-      setState(fromUrl.state);
-      setQuery(fromUrl.city || fromUrl.state);
+      applyNormalizedLocation(
+        fromUrl.city,
+        fromUrl.state,
+        fromUrl.locationKind || (fromUrl.state ? "state" : "city")
+      );
     } else if (serverFallback.city || serverFallback.state) {
-      setCity(serverFallback.city);
-      setState(serverFallback.state);
-      setQuery(serverFallback.city || serverFallback.state);
+      applyNormalizedLocation(
+        serverFallback.city,
+        serverFallback.state,
+        serverFallback.locationKind
+      );
+    } else if (session?.city || session?.state) {
+      applyNormalizedLocation(
+        session.city,
+        session.state,
+        session.locationKind || (session.state ? "state" : "city")
+      );
     }
 
     if (hasUrlDates) {
       setCheckIn(fromUrl.checkIn);
       setCheckOut(fromUrl.checkOut);
+    } else if (session?.checkIn && session?.checkOut) {
+      setCheckIn(session.checkIn);
+      setCheckOut(session.checkOut);
     } else {
-      const session = loadTripSearch();
-      if (session?.checkIn && session?.checkOut) {
-        setCheckIn(session.checkIn);
-        setCheckOut(session.checkOut);
-      } else {
-        setCheckIn(serverFallback.checkIn);
-        setCheckOut(serverFallback.checkOut);
-      }
+      setCheckIn(serverFallback.checkIn);
+      setCheckOut(serverFallback.checkOut);
     }
 
     if (hasUrlGuests) {
       setGuests(fromUrl.guests);
     } else {
-      const session = loadTripSearch();
       setGuests(session?.guests || serverFallback.guests);
     }
-  }, [
-    pathname,
-    queryKey,
-    searchParams,
-    serverFallback,
-  ]);
+  }, [pathname, queryKey, searchParams, serverFallback, resolveLocation]);
 
   const syncTripEdit = useCallback(
     (overrides = {}) => {
-      const nextTrip = {
-        category: category || "all",
+      const loc = resolveLocation({
         city: overrides.city !== undefined ? overrides.city : city,
         state: overrides.state !== undefined ? overrides.state : state,
+        kind: overrides.locationKind ?? locationKind,
+      });
+      const nextTrip = {
+        category: category || "all",
+        city: loc.city,
+        state: loc.state,
+        locationKind: loc.kind,
         checkIn: overrides.checkIn !== undefined ? overrides.checkIn : checkIn,
         checkOut: overrides.checkOut !== undefined ? overrides.checkOut : checkOut,
         guests: overrides.guests !== undefined ? overrides.guests : guests,
@@ -168,30 +171,38 @@ export default function ListingsHeroSearch({
       category,
       city,
       state,
+      locationKind,
       checkIn,
       checkOut,
       guests,
       router,
       pathname,
       searchParams,
+      resolveLocation,
     ]
   );
 
   const onLocationSelect = ({ city: c, state: s, kind }) => {
-    const resolved = resolveTripLocation(c, s, kind);
-    setCity(resolved.city);
-    setState(resolved.state);
-    setQuery(resolved.city || resolved.state);
+    const normalized = resolveLocation({ city: c, state: s, kind });
+    setCity(normalized.city);
+    setState(normalized.state);
+    setLocationKind(normalized.kind);
+    setQuery(normalized.city || normalized.state);
     if (searchError) setSearchError("");
-    syncTripEdit({ city: resolved.city, state: resolved.state });
+    syncTripEdit({
+      city: normalized.city,
+      state: normalized.state,
+      locationKind: normalized.kind,
+    });
   };
 
   const handleSearch = () => {
-    const resolvedLocation = resolveTripLocation(city, state);
+    const normalized = resolveLocation({ city, state, kind: locationKind });
     const trip = {
       category: category || "all",
-      city: resolvedLocation.city,
-      state: resolvedLocation.state,
+      city: normalized.city,
+      state: normalized.state,
+      locationKind: normalized.kind,
       checkIn,
       checkOut,
       guests,
@@ -206,7 +217,9 @@ export default function ListingsHeroSearch({
     setSearchError("");
     setCity(trip.city);
     setState(trip.state);
+    setLocationKind(normalized.kind);
     setQuery(trip.city || trip.state);
+    logSearch("listings-page-search", trip);
     persistTripSearch(trip, { router, pathname, searchParams });
 
     router.push(buildListingsUrlPreservingFilters(searchParams, trip));

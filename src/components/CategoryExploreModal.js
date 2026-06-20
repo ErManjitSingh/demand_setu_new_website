@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import BookingDateRangePicker from "@/components/booking/BookingDateRangePicker";
 import GuestsRoomsPicker from "@/components/booking/GuestsRoomsPicker";
 import StateCityLocationField from "@/components/location/StateCityLocationField";
+import { useTripLocationSearch } from "@/hooks/useTripLocationSearch";
 import { getApiPropertyType } from "@/lib/propertyTypes";
 import {
   buildListingsSearchUrl,
@@ -15,9 +16,11 @@ import {
 
 export default function CategoryExploreModal({ category, onClose }) {
   const router = useRouter();
+  const { resolveLocation, logSearch } = useTripLocationSearch();
   const [query, setQuery] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+  const [locationKind, setLocationKind] = useState(null);
   const [checkIn, setCheckIn] = useState(null);
   const [checkOut, setCheckOut] = useState(null);
   const [guests, setGuests] = useState({ ...DEFAULT_GUESTS });
@@ -48,10 +51,12 @@ export default function CategoryExploreModal({ category, onClose }) {
   const hasDestination = Boolean(destination);
 
   const handleContinue = () => {
+    const normalized = resolveLocation({ city, state, kind: locationKind });
     const trip = {
       category: category.id,
-      city,
-      state,
+      city: normalized.city,
+      state: normalized.state,
+      locationKind: normalized.kind,
       checkIn,
       checkOut,
       guests,
@@ -64,6 +69,7 @@ export default function CategoryExploreModal({ category, onClose }) {
     }
 
     setError("");
+    logSearch("category-modal-search", trip);
     persistTripSearch(trip);
 
     const extraParams = new URLSearchParams();
@@ -73,8 +79,8 @@ export default function CategoryExploreModal({ category, onClose }) {
     router.push(
       buildListingsSearchUrl({
         category: category.id,
-        city,
-        state,
+        city: trip.city,
+        state: trip.state,
         checkIn,
         checkOut,
         guests,
@@ -84,10 +90,12 @@ export default function CategoryExploreModal({ category, onClose }) {
     onClose();
   };
 
-  const onLocationSelect = ({ city: c, state: s }) => {
-    setCity(c);
-    setState(s);
-    setQuery(c || s);
+  const onLocationSelect = ({ city: c, state: s, kind }) => {
+    const normalized = resolveLocation({ city: c, state: s, kind });
+    setCity(normalized.city);
+    setState(normalized.state);
+    setLocationKind(normalized.kind);
+    setQuery(normalized.city || normalized.state);
     if (error) setError("");
   };
 

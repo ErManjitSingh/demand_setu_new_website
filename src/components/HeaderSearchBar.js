@@ -7,12 +7,14 @@ import GuestsRoomsPicker from "@/components/booking/GuestsRoomsPicker";
 import MobilePickerSheet from "@/components/booking/MobilePickerSheet";
 import StateCityLocationField from "@/components/location/StateCityLocationField";
 import { useTripSearch } from "@/hooks/useTripSearch";
+import { useTripLocationSearch } from "@/hooks/useTripLocationSearch";
 import {
   buildListingsSearchUrl,
   DEFAULT_GUESTS,
   persistTripSearch,
   validateTripSearch,
 } from "@/lib/bookingSearch";
+import { isPropertySlugPath } from "@/lib/propertySlug";
 
 function HeaderSearchBarClient({
   defaultLocation = "",
@@ -28,6 +30,7 @@ function HeaderSearchBarClient({
     city: defaultCity || defaultLocation,
     state: defaultState,
   });
+  const { resolveLocation, logSearch } = useTripLocationSearch();
 
   const fallbackQuery = defaultCity || defaultState || defaultLocation;
   const [checkIn, setCheckIn] = useState(trip.checkIn);
@@ -36,6 +39,10 @@ function HeaderSearchBarClient({
   const [query, setQuery] = useState(trip.city || trip.state || fallbackQuery);
   const [city, setCity] = useState(trip.city || defaultCity || "");
   const [state, setState] = useState(trip.state || defaultState || "");
+  const [locationKind, setLocationKind] = useState(
+    trip.locationKind ||
+      (trip.state || defaultState ? "state" : trip.city || defaultCity ? "city" : null)
+  );
   const [editOpen, setEditOpen] = useState(false);
   const [searchError, setSearchError] = useState("");
 
@@ -49,6 +56,10 @@ function HeaderSearchBarClient({
     setQuery((prev) => (prev === tripLocation ? prev : tripLocation));
     setCity(trip.city || defaultCity || "");
     setState(trip.state || defaultState || "");
+    setLocationKind(
+      trip.locationKind ||
+        (trip.state || defaultState ? "state" : trip.city || defaultCity ? "city" : null)
+    );
     if (trip.checkIn) {
       setCheckIn((prev) =>
         prev?.getTime() === trip.checkIn.getTime() ? prev : trip.checkIn
@@ -79,14 +90,21 @@ function HeaderSearchBarClient({
     tripCheckInKey,
     tripCheckOutKey,
     tripGuestsKey,
+    trip.locationKind,
   ]);
 
   const syncTripEdit = useCallback(
     (overrides = {}) => {
-      const nextTrip = {
-        category: category || trip.category || "all",
+      const loc = resolveLocation({
         city: overrides.city !== undefined ? overrides.city : city,
         state: overrides.state !== undefined ? overrides.state : state,
+        kind: overrides.locationKind ?? locationKind,
+      });
+      const nextTrip = {
+        category: category || trip.category || "all",
+        city: loc.city,
+        state: loc.state,
+        locationKind: loc.kind,
         checkIn: overrides.checkIn !== undefined ? overrides.checkIn : checkIn,
         checkOut: overrides.checkOut !== undefined ? overrides.checkOut : checkOut,
         guests: overrides.guests !== undefined ? overrides.guests : guests,
@@ -100,31 +118,41 @@ function HeaderSearchBarClient({
       trip.category,
       city,
       state,
+      locationKind,
       checkIn,
       checkOut,
       guests,
       router,
       pathname,
       searchParams,
+      resolveLocation,
     ]
   );
 
   const onLocationSelect = useCallback(
-    ({ city: c, state: s }) => {
-      setCity(c);
-      setState(s);
-      setQuery(c || s);
+    ({ city: c, state: s, kind }) => {
+      const normalized = resolveLocation({ city: c, state: s, kind });
+      setCity(normalized.city);
+      setState(normalized.state);
+      setLocationKind(normalized.kind);
+      setQuery(normalized.city || normalized.state);
       if (searchError) setSearchError("");
-      syncTripEdit({ city: c, state: s });
+      syncTripEdit({
+        city: normalized.city,
+        state: normalized.state,
+        locationKind: normalized.kind,
+      });
     },
-    [searchError, syncTripEdit]
+    [searchError, syncTripEdit, resolveLocation]
   );
 
   const runSearch = () => {
+    const normalized = resolveLocation({ city, state, kind: locationKind });
     const nextTrip = {
       category: category || trip.category || "all",
-      city,
-      state,
+      city: normalized.city,
+      state: normalized.state,
+      locationKind: normalized.kind,
       checkIn,
       checkOut,
       guests,
@@ -137,6 +165,9 @@ function HeaderSearchBarClient({
     }
 
     setSearchError("");
+    const isProductPage =
+      /^\/property\/[^/]+$/.test(pathname) || isPropertySlugPath(pathname);
+    logSearch(isProductPage ? "product-page-search" : "header-search", nextTrip);
     persistTripSearch(nextTrip);
 
     router.push(

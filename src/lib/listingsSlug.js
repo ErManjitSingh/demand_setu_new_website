@@ -102,11 +102,10 @@ export function mergeListingsRouteSearchParams(routeParams, queryParams = {}) {
     if (!city && locationName && !isStateSlug(state, locationSlug)) {
       query.city = locationName;
     }
-  } else if (!city && locationName) {
-    query.city = locationName;
   } else if (city) {
     query.city = city;
   }
+  // Slug-only: city/state resolved server-side via API catalog.
 
   return query;
 }

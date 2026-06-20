@@ -20,6 +20,10 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "packagemaker-image.firebasestorage.app",
+      },
+      {
+        protocol: "https",
         hostname: "encrypted-tbn0.gstatic.com",
       },
       {

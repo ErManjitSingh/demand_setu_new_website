@@ -79,17 +79,88 @@ export function resolveLocationFromCatalog(nameOrSlug, { cities = [], states = [
     return { city: cityMatch, state: stateMatch, kind: null, ambiguous: true };
   }
 
-  return { city: fromLocationSlug(slug), state: "", kind: "city", ambiguous: false };
+  return { city: "", state: "", kind: null, ambiguous: false, label: fromLocationSlug(slug) };
 }
 
-/** Apply explicit city/state selection kind when slug matches both lists. */
+/** Apply explicit city/state selection kind (from picker or state cards). */
 export function applyLocationKind(resolved, kind) {
-  if (!resolved?.ambiguous || !kind) return resolved;
+  if (!kind || !resolved) return resolved;
+
   if (kind === "state") {
-    return { city: "", state: resolved.state, kind: "state", ambiguous: false };
+    const name = resolved.state || resolved.city || resolved.label || "";
+    return { city: "", state: name, kind: "state", ambiguous: false };
   }
   if (kind === "city") {
-    return { city: resolved.city, state: "", kind: "city", ambiguous: false };
+    const name = resolved.city || resolved.state || resolved.label || "";
+    return { city: name, state: "", kind: "city", ambiguous: false };
   }
+
+  if (!resolved.ambiguous) return resolved;
   return resolved;
+}
+
+/**
+ * Normalize trip location using API catalog + what the user picked (city vs state).
+ * @returns {{ city: string, state: string, kind: 'city'|'state'|null }}
+ */
+export function normalizeTripLocation(
+  { city = "", state = "", kind = null } = {},
+  catalog = {}
+) {
+  const c = String(city || "").trim();
+  const s = String(state || "").trim();
+
+  if (kind === "state") {
+    const name = s || c;
+    if (!name) return { city: "", state: "", kind: null };
+    const resolved = resolveLocationFromCatalog(name, catalog);
+    const withKind = applyLocationKind(resolved, "state");
+    return { city: "", state: withKind.state || name, kind: "state" };
+  }
+
+  if (kind === "city") {
+    const name = c || s;
+    if (!name) return { city: "", state: "", kind: null };
+    const resolved = resolveLocationFromCatalog(name, catalog);
+    const withKind = applyLocationKind(resolved, "city");
+    return { city: withKind.city || name, state: "", kind: "city" };
+  }
+
+  if (s && !c) {
+    const resolved = resolveLocationFromCatalog(s, catalog);
+    if (resolved.kind === "state") {
+      return { city: "", state: resolved.state, kind: "state" };
+    }
+    if (resolved.kind === "city") {
+      return { city: resolved.city, state: "", kind: "city" };
+    }
+    return { city: "", state: s, kind: "state" };
+  }
+
+  if (c && !s) {
+    const resolved = resolveLocationFromCatalog(c, catalog);
+    if (resolved.kind === "state") {
+      return { city: "", state: resolved.state, kind: "state" };
+    }
+    if (resolved.kind === "city") {
+      return { city: resolved.city, state: "", kind: "city" };
+    }
+    return { city: c, state: "", kind: "city" };
+  }
+
+  const label = c || s;
+  if (!label) return { city: "", state: "", kind: null };
+
+  const resolved = resolveLocationFromCatalog(label, catalog);
+  if (resolved.kind === "state") {
+    return { city: "", state: resolved.state, kind: "state" };
+  }
+  if (resolved.kind === "city") {
+    return { city: resolved.city, state: "", kind: "city" };
+  }
+  if (resolved.ambiguous) {
+    return { city: "", state: "", kind: null };
+  }
+
+  return { city: label, state: "", kind: "city" };
 }

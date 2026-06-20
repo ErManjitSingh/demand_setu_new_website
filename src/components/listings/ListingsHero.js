@@ -1,7 +1,7 @@
-import Image from "next/image";
 import { Suspense } from "react";
 import { Playfair_Display } from "next/font/google";
 import ListingsHeroSearch from "@/components/listings/ListingsHeroSearch";
+import ListingsHeroBackground from "@/components/listings/ListingsHeroBackground";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -20,41 +20,51 @@ export default function ListingsHero({
   category,
   cover,
   description,
+  seo = null,
   initialCity = "",
   initialState = "",
+  initialLocationKind = null,
   initialCheckIn = "",
   initialCheckOut = "",
   initialAdults = 2,
   initialChildren = 0,
   initialRooms = 1,
 }) {
+  const heroTitle = seo?.heading || null;
+  const heroSubtitle =
+    seo?.subHeading ||
+    description ||
+    "Hotels, villas & unique stays for unforgettable memories.";
+  const heroImageAlt =
+    seo?.images?.[0]?.name || seo?.focusKeyword || seo?.heading || "Destination stays";
+
   return (
-    <section className="relative z-30 bg-stone-950">
+    <section className="relative z-30">
       <div className="absolute inset-0 overflow-hidden">
-        <Image
-          src={cover}
-          alt=""
-          fill
-          priority
-          className="object-cover"
-          sizes="100vw"
+        <ListingsHeroBackground
+          images={seo?.images}
+          fallbackCover={cover}
+          fallbackAlt={heroImageAlt}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-stone-950/75 via-stone-950/55 to-stone-950/85" />
-        <div className="absolute inset-0 bg-gradient-to-r from-stone-950/80 via-stone-950/40 to-stone-950/20" />
       </div>
 
       <div className="relative mx-auto max-w-6xl px-4 pb-14 pt-10 sm:px-6 sm:pb-16 sm:pt-14">
         <div className="mx-auto max-w-4xl text-center">
-          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-[3.25rem] lg:leading-[1.15]">
-            Extraordinary stays,{" "}
-            <span className={`${playfair.className} text-brand`}>
-              crafted for you.
-            </span>
+          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.75)] sm:text-4xl lg:text-5xl lg:leading-[1.15]">
+            {heroTitle ? (
+              heroTitle
+            ) : (
+              <>
+                Extraordinary stays,{" "}
+                <span className={`${playfair.className} text-brand`}>
+                  crafted for you.
+                </span>
+              </>
+            )}
           </h1>
 
-          <p className="mx-auto mt-4 max-w-xl text-base text-stone-300 sm:text-lg">
-            {description ||
-              "Hotels, villas & unique stays for unforgettable memories."}
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)] sm:text-lg">
+            {heroSubtitle}
           </p>
 
           <div className="relative z-20 mx-auto mt-8 max-w-4xl overflow-visible sm:mt-10">
@@ -63,6 +73,7 @@ export default function ListingsHero({
                 category={category}
                 initialCity={initialCity}
                 initialState={initialState}
+                initialLocationKind={initialLocationKind}
                 initialCheckIn={initialCheckIn}
                 initialCheckOut={initialCheckOut}
                 initialAdults={initialAdults}
@@ -76,7 +87,7 @@ export default function ListingsHero({
             {TRUST_ITEMS.map((item) => (
               <li
                 key={item.label}
-                className="flex items-center gap-2 text-xs font-medium text-white/90 sm:text-sm"
+                className="flex items-center gap-2 text-xs font-medium text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.65)] sm:text-sm"
               >
                 <TrustIcon type={item.icon} />
                 {item.label}

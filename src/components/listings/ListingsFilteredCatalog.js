@@ -16,6 +16,7 @@ import {
 } from "@/lib/listingFilters";
 import {
   buildListingsUrlPreservingFilters,
+  loadTripSearch,
   parseListingsUrl,
   parseTripFromSearchParams,
 } from "@/lib/bookingSearch";
@@ -95,8 +96,32 @@ function ListingsFilteredCatalogClient({
       params.delete("city");
       params.delete("state");
 
+      const session = loadTripSearch();
+      let city = pathTrip.city;
+      let state = pathTrip.state;
+      let locationKind = pathTrip.locationKind;
+      if (session && (session.city || session.state)) {
+        if (!city && !state) {
+          city = session.city;
+          state = session.state;
+          locationKind = session.locationKind;
+        } else if (session.locationKind) {
+          locationKind = session.locationKind;
+          if (session.locationKind === "state" && session.state) {
+            city = "";
+            state = session.state;
+          } else if (session.locationKind === "city" && session.city) {
+            city = session.city;
+            state = "";
+          }
+        }
+      }
+
       const nextTrip = {
         ...pathTrip,
+        city,
+        state,
+        locationKind,
         category:
           updates.category === null || updates.category === "all"
             ? "all"

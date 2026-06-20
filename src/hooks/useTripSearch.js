@@ -56,6 +56,13 @@ export function useTripSearch(serverFallback) {
       category: merged.category || fallback.category || "all",
       city: merged.city || fallback.city || "",
       state: merged.state || fallback.state || "",
+      locationKind:
+        merged.locationKind ||
+        (merged.state && !merged.city
+          ? "state"
+          : merged.city
+            ? "city"
+            : null),
       checkIn: merged.checkIn || fallback.checkIn || null,
       checkOut: merged.checkOut || fallback.checkOut || null,
       guests: normalizeGuests(merged.guests || fallback.guests || DEFAULT_GUESTS),

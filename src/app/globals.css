@@ -280,3 +280,63 @@ body {
     linear-gradient(var(--surface), var(--surface)) padding-box,
     linear-gradient(135deg, #fdba74, #ea580c, #fbbf24) border-box;
 }
+
+.seo-html :where(ol, ul) {
+  margin: 0.75rem 0 0;
+  padding-left: 1.35rem;
+}
+
+.seo-html ol {
+  list-style-type: decimal;
+}
+
+.seo-html ul {
+  list-style-type: disc;
+}
+
+.seo-html li {
+  margin-top: 0.65rem;
+}
+
+.seo-html li:first-child {
+  margin-top: 0;
+}
+
+.seo-html :where(p, h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+}
+
+.seo-html p + p,
+.seo-html p + :where(ol, ul),
+.seo-html :where(ol, ul) + p {
+  margin-top: 1rem;
+}
+
+.seo-html :where(h1, h2, h3, h4, h5, h6) {
+  color: var(--foreground);
+  font-weight: 800;
+}
+
+.seo-html h3,
+.seo-html h4 {
+  margin-top: 1rem;
+}
+
+.seo-html strong,
+.seo-html b {
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.seo-html a {
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.seo-html blockquote {
+  margin-top: 1rem;
+  border-left: 3px solid var(--brand);
+  padding-left: 1rem;
+  color: var(--foreground);
+}

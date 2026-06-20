@@ -7,6 +7,7 @@ import { ALL_STAYS_CATEGORY } from "@/lib/categoryExplore";
 import { useCategoryExplore } from "@/hooks/useCategoryExplore";
 import {
   buildListingsUrlPreservingFilters,
+  loadTripSearch,
   parseListingsUrl,
   parseTripFromSearchParams,
 } from "@/lib/bookingSearch";
@@ -36,11 +37,37 @@ function CategoryPillsClient({ activeCategory = "all" }) {
       : "bg-white text-foreground shadow-md shadow-stone-200/60 ring-1 ring-stone-900/5 hover:ring-brand/30 hover:shadow-lg";
 
   const setCategory = (catId) => {
+    const session = loadTripSearch();
     const trip = isListingsSlugPath(pathname)
       ? parseListingsUrl(pathname, searchParams)
       : parseTripFromSearchParams(searchParams);
+
+    let city = trip.city;
+    let state = trip.state;
+    let locationKind = trip.locationKind;
+
+    if (session && (session.city || session.state)) {
+      if (!city && !state) {
+        city = session.city;
+        state = session.state;
+        locationKind = session.locationKind;
+      } else if (session.locationKind) {
+        locationKind = session.locationKind;
+        if (session.locationKind === "state" && session.state) {
+          city = "";
+          state = session.state;
+        } else if (session.locationKind === "city" && session.city) {
+          city = session.city;
+          state = "";
+        }
+      }
+    }
+
     const nextTrip = {
       ...trip,
+      city,
+      state,
+      locationKind,
       category: catId === "all" ? "all" : catId,
     };
     const params = new URLSearchParams(searchParams.toString());
