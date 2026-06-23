@@ -3,7 +3,9 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "@/lib/listings";
+import { MAX_SELF_SERVICE_SEARCH_ROOMS } from "@/lib/guestOccupancy";
 import { usePropertyRoomSelection } from "@/contexts/PropertyRoomSelectionContext";
+import BulkStayEnquiryForm from "@/components/booking/BulkStayEnquiryForm";
 import {
   buildMealPlanOffer,
   calculateRoomsStayPricing,
@@ -13,12 +15,12 @@ import {
   getInventoryCategoryData,
   getAvailableMealPlansForStay,
   sumCategorySelectedRooms,
+  getRequiredRoomCount,
 } from "@/lib/propertyInventory";
 import RoomSelectionModal from "@/components/property/RoomSelectionModal";
 import RoomComboCustomizeSection from "@/components/property/RoomComboCustomizeSection";
 import RoomAvailabilityNotice from "@/components/property/RoomAvailabilityNotice";
 import RoomPricingDetail from "@/components/property/RoomPricingDetail";
-import { getRequiredRoomCount } from "@/lib/propertyInventory";
 import { usePropertyOverlay } from "@/hooks/usePropertyOverlay";
 
 function MealInclusionIcon({ type }) {
@@ -339,7 +341,17 @@ export default function PropertyRooms({ rooms }) {
   const selection = usePropertyRoomSelection();
   const [modalState, setModalState] = useState(null);
   const [customizeExpanded, setCustomizeExpanded] = useState(false);
+  const [bulkEnquiryOpen, setBulkEnquiryOpen] = useState(false);
+  const [requestedBulkRooms, setRequestedBulkRooms] = useState(
+    MAX_SELF_SERVICE_SEARCH_ROOMS + 1
+  );
   const customizeSectionRef = useRef(null);
+
+  const openBulkEnquiry = useCallback((roomCount) => {
+    setRequestedBulkRooms(Math.max(MAX_SELF_SERVICE_SEARCH_ROOMS + 1, roomCount));
+    setBulkEnquiryOpen(true);
+    setModalState(null);
+  }, []);
 
   usePropertyOverlay(Boolean(modalState), "room-selection-modal");
   usePropertyOverlay(Boolean(selection?.availabilityNotice), "availability-notice");
@@ -404,6 +416,27 @@ export default function PropertyRooms({ rooms }) {
       count,
       categoryData: modalState.categoryData,
     };
+
+    if (count > 0) {
+      if (modalState.isComboMode) {
+        if (count > MAX_SELF_SERVICE_SEARCH_ROOMS) {
+          openBulkEnquiry(count);
+          return;
+        }
+      } else {
+        const currentTotal = selection.totalSelectedRooms || 0;
+        const currentPlanCount = selection.getSelectedCountForPlan(
+          modalState.inventoryKey,
+          modalState.mealPlan
+        );
+        const newTotal = currentTotal - currentPlanCount + count;
+        if (newTotal > MAX_SELF_SERVICE_SEARCH_ROOMS) {
+          openBulkEnquiry(newTotal);
+          return;
+        }
+      }
+    }
+
     if (count === 0) {
       if (modalState.isComboMode) {
         selection.applyComboSelection(payload);
@@ -419,6 +452,11 @@ export default function PropertyRooms({ rooms }) {
 
   const handleCustomizeApply = ({ selections: nextSelections, roomSlots }) => {
     if (!selection) return;
+    const total = roomSlots?.length || 0;
+    if (total > MAX_SELF_SERVICE_SEARCH_ROOMS) {
+      openBulkEnquiry(total);
+      return;
+    }
     selection.applyCustomSelection({ selections: nextSelections, roomSlots });
   };
 
@@ -717,6 +755,14 @@ export default function PropertyRooms({ rooms }) {
       <RoomAvailabilityNotice
         notice={selection?.availabilityNotice}
         onDismiss={selection?.dismissAvailabilityNotice}
+      />
+
+      <BulkStayEnquiryForm
+        open={bulkEnquiryOpen}
+        onClose={() => setBulkEnquiryOpen(false)}
+        guests={guests}
+        requestedRooms={requestedBulkRooms}
+        defaultLocation={selection?.trip?.city || selection?.trip?.state || ""}
       />
     </section>
   );

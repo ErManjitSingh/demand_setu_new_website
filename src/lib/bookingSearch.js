@@ -28,7 +28,9 @@ export const TRIP_SEARCH_UPDATED = "demand-setu-trip-search-updated";
 
 function notifyTripSearchUpdated() {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent(TRIP_SEARCH_UPDATED));
+  queueMicrotask(() => {
+    window.dispatchEvent(new CustomEvent(TRIP_SEARCH_UPDATED));
+  });
 }
 
 export const DEFAULT_GUESTS = { adults: 2, children: 0, rooms: 1, childAges: [] };

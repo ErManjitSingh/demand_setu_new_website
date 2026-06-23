@@ -668,7 +668,13 @@ export function isComboActiveForPrimary(selections, rooms, mealPlan, primaryInve
       parts.push({ inventoryKey: key, roomCount: count });
     }
   }
-  return parts.length > 1 && parts[0]?.inventoryKey === primaryInventoryKey;
+  if (parts.length <= 1) return false;
+
+  // Combo primary is the category with the most rooms for this meal plan (not list order).
+  const primaryPart = parts.reduce((best, part) =>
+    !best || part.roomCount > best.roomCount ? part : best
+  );
+  return primaryPart.inventoryKey === primaryInventoryKey;
 }
 
 export function getComboOfferForCategory({

@@ -43,6 +43,7 @@ export function PropertyRoomSelectionProvider({
   const userCustomizedRef = useRef(false);
   const pageAvailabilityNoticeShownRef = useRef(false);
   const internalGuestsSyncRef = useRef(false);
+  const pendingGuestsSyncRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -136,6 +137,17 @@ export function PropertyRoomSelectionProvider({
       searchParams,
     ]
   );
+
+  const queueGuestsSync = useCallback((customSlots, totalRooms) => {
+    pendingGuestsSyncRef.current = { customSlots, totalRooms };
+  }, []);
+
+  useEffect(() => {
+    const pending = pendingGuestsSyncRef.current;
+    if (!pending) return;
+    pendingGuestsSyncRef.current = null;
+    syncTripGuestsFromSelection(pending.customSlots, pending.totalRooms);
+  });
 
   const totalRoomsInSelections = useCallback((selectionMap) => {
     return Object.values(selectionMap || {}).reduce(
@@ -295,48 +307,25 @@ export function PropertyRoomSelectionProvider({
 
       if (requestedCount === 0) {
         userClearedSelectionRef.current = true;
-        userCustomizedRef.current = true;
+        userCustomizedRef.current = false;
         setCustomRoomSlots(null);
-        setSelections((prev) => {
-          const next = { ...prev };
-          for (const [key, sel] of Object.entries(prev)) {
-            if (!sel.plans?.[mealPlan]) continue;
-            const newPlans = { ...sel.plans };
-            delete newPlans[mealPlan];
-            if (Object.keys(newPlans).length === 0) {
-              delete next[key];
-            } else {
-              next[key] = { ...sel, plans: newPlans };
-            }
-          }
-          return next;
-        });
+        setSelections({});
         return { fulfilled: true, comboRooms: 0 };
       }
 
+      // Automatic combo replaces any customize selection (mutually exclusive).
       userClearedSelectionRef.current = false;
       userCustomizedRef.current = false;
       setCustomRoomSlots(null);
       const safeCount = Math.max(minRooms, requestedCount);
       let comboResult = null;
+      let guestsSyncTotalRooms = 0;
 
-      setSelections((prev) => {
-        const cleared = { ...prev };
-        for (const [key, sel] of Object.entries(prev)) {
-          if (!sel.plans?.[mealPlan]) continue;
-          const newPlans = { ...sel.plans };
-          delete newPlans[mealPlan];
-          if (Object.keys(newPlans).length === 0) {
-            delete cleared[key];
-          } else {
-            cleared[key] = { ...sel, plans: newPlans };
-          }
-        }
-
+      setSelections(() => {
         comboResult = buildRoomComboAllocation({
           inventoryB2c,
           rooms,
-          selections: cleared,
+          selections: {},
           primaryInventoryKey: inventoryKey,
           mealPlan,
           requestedCount: safeCount,
@@ -344,17 +333,21 @@ export function PropertyRoomSelectionProvider({
         });
 
         if (!comboResult.allocations.length) {
-          return prev;
+          return {};
         }
 
         const next = applyAllocationsToSelections(
-          cleared,
+          {},
           comboResult.allocations,
           mealPlan
         );
-        syncTripGuestsFromSelection(null, totalRoomsInSelections(next));
+        guestsSyncTotalRooms = totalRoomsInSelections(next);
         return next;
       });
+
+      if (guestsSyncTotalRooms > 0) {
+        queueGuestsSync(null, guestsSyncTotalRooms);
+      }
 
       return comboResult;
     },
@@ -364,25 +357,26 @@ export function PropertyRoomSelectionProvider({
       nightDates,
       guests,
       applyAllocationsToSelections,
-      syncTripGuestsFromSelection,
+      queueGuestsSync,
       totalRoomsInSelections,
     ]
   );
 
   const applyCustomSelection = useCallback(
     ({ selections: nextSelections, roomSlots }) => {
+      // Customize replaces any automatic combo selection (mutually exclusive).
       userClearedSelectionRef.current = false;
       userCustomizedRef.current = true;
       const slots = roomSlots?.length ? roomSlots : null;
-      const nextSelectionMap = nextSelections || {};
+      const nextSelectionMap = slots ? nextSelections || {} : {};
       setCustomRoomSlots(slots);
       setSelections(nextSelectionMap);
       const totalRooms = slots?.length
         ? slots.filter(Boolean).length
         : totalRoomsInSelections(nextSelectionMap);
-      syncTripGuestsFromSelection(slots, totalRooms);
+      queueGuestsSync(slots, totalRooms);
     },
-    [syncTripGuestsFromSelection, totalRoomsInSelections]
+    [queueGuestsSync, totalRoomsInSelections]
   );
 
   const setPlanRoomCount = useCallback(
@@ -393,6 +387,8 @@ export function PropertyRoomSelectionProvider({
 
       userCustomizedRef.current = true;
       setCustomRoomSlots(null);
+
+      let guestsSyncTotalRooms = 0;
 
       setSelections((prev) => {
         const current = prev[inventoryKey] || {
@@ -421,11 +417,15 @@ export function PropertyRoomSelectionProvider({
         } else {
           next[inventoryKey] = { ...current, plans: nextPlans };
         }
-        syncTripGuestsFromSelection(null, totalRoomsInSelections(next));
+        guestsSyncTotalRooms = totalRoomsInSelections(next);
         return next;
       });
+
+      if (guestsSyncTotalRooms > 0) {
+        queueGuestsSync(null, guestsSyncTotalRooms);
+      }
     },
-    [nightDates, syncTripGuestsFromSelection, totalRoomsInSelections]
+    [nightDates, queueGuestsSync, totalRoomsInSelections]
   );
 
   const clearMealPlanSelection = useCallback(
