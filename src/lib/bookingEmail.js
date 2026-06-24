@@ -1,4 +1,5 @@
 import { buildApiUrl } from "@/lib/apiConfig";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 function formatInr(amount) {
   const value = Number(amount) || 0;
@@ -461,7 +462,7 @@ export async function sendBookingConfirmationEmail(booking) {
   const html = buildBookingConfirmationEmailHtml(booking);
   const text = buildBookingConfirmationEmailText(booking);
 
-  const response = await fetch(buildApiUrl("api/webmail/send-demand"), {
+  const response = await fetchWithTimeout(buildApiUrl("api/webmail/send-demand"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

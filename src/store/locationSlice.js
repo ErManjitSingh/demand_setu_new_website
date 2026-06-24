@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { buildApiUrl } from "@/lib/apiConfig";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import {
   normalizeCityName,
   normalizeLocationList,
@@ -11,7 +12,7 @@ const CACHE_TTL_MS = 30 * 60 * 1000;
 export const fetchHotelCities = createAsyncThunk(
   "locations/fetchHotelCities",
   async () => {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       buildApiUrl("api/packagemaker//get-packagemaker-hotel-cities"),
       { cache: "no-store" }
     );
@@ -41,7 +42,7 @@ export const fetchHotelCities = createAsyncThunk(
 export const fetchHotelStates = createAsyncThunk(
   "locations/fetchHotelStates",
   async () => {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       buildApiUrl("api/packagemaker//get-packagemaker-hotel-states"),
       { cache: "no-store" }
     );

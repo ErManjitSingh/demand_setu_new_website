@@ -40,11 +40,8 @@ export function buildCheckoutApiPayload({
   gst,
   total,
   nightly,
-  memberSignIn = false,
   guest = {},
 }) {
-  const memberDiscount = memberSignIn ? Math.round(total * 0.1) : 0;
-  const payableTotal = memberSignIn ? Math.round(total * 0.9) : total;
   const hotelId = listing.hotelId || parseHotelIdFromSlug(listing.slug) || null;
 
   return {
@@ -79,8 +76,7 @@ export function buildCheckoutApiPayload({
       subtotal,
       gst,
       total,
-      memberDiscount,
-      payableTotal,
+      payableTotal: total,
     },
     guest: {
       firstName: guest.firstName || "",
@@ -90,7 +86,6 @@ export function buildCheckoutApiPayload({
       country: guest.country || "India",
       mobile: guest.mobile || "",
       password: guest.password || "",
-      memberSignIn: Boolean(memberSignIn),
     },
   };
 }

@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { buildApiUrl } from "@/lib/apiConfig";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import {
   applyLocationKind,
   normalizeCityName,
@@ -12,7 +13,7 @@ import { toLocationSlug } from "@/lib/listingsSlug";
 
 export const fetchHotelStatesList = cache(async () => {
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       buildApiUrl("api/packagemaker//get-packagemaker-hotel-states"),
       { next: { revalidate: 1800 } }
     );
@@ -27,7 +28,7 @@ export const fetchHotelStatesList = cache(async () => {
 
 export const fetchHotelCitiesList = cache(async () => {
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       buildApiUrl("api/packagemaker//get-packagemaker-hotel-cities"),
       { next: { revalidate: 1800 } }
     );

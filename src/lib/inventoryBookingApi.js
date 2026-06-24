@@ -1,4 +1,5 @@
 import { buildApiUrl } from "@/lib/apiConfig";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 const GUEST_SESSION_KEY = "demand_setu_guest_session";
 const GUEST_PERSISTENT_KEY = "demand_setu_guest_persistent";
@@ -10,7 +11,7 @@ function notifyAuthChange() {
 }
 
 async function postJson(path, body) {
-  const response = await fetch(buildApiUrl(path), {
+  const response = await fetchWithTimeout(buildApiUrl(path), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -51,7 +52,7 @@ export async function getBookingsByMobile(mobile) {
     return { success: true, data: [] };
   }
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildApiUrl(`api/inventorybooking/get-by-mobile/${encodeURIComponent(digits)}`),
     { cache: "no-store" }
   );

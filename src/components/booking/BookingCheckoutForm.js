@@ -211,25 +211,6 @@ function BookingCheckoutFormClient({
       },
     });
 
-  useEffect(() => {
-    const apiPayload = buildApiPayload();
-    console.log("[Checkout API payload]", apiPayload);
-  }, [
-    listing.slug,
-    checkIn,
-    checkOut,
-    trip.guests,
-    nights,
-    hasInventorySelection,
-    roomBooking,
-    subtotal,
-    gst,
-    total,
-    lineItems,
-    nightly,
-    inventoryQueryKey,
-  ]);
-
   const sendBookingNotifications = async (bookingForNotifications, { paidOnline = false } = {}) => {
     try {
       await sendBookingWelcomeWhatsApp({ mobile: mobile.trim() });
@@ -264,8 +245,6 @@ function BookingCheckoutFormClient({
     }
 
     const submitPayload = buildApiPayload();
-    console.log("[Checkout API submit]", submitPayload);
-    console.log("[Checkout API submit JSON]", JSON.stringify(submitPayload, null, 2));
 
     setBookError("");
     setLoading(true);
@@ -289,7 +268,6 @@ function BookingCheckoutFormClient({
             lineItems,
             nightly,
           });
-          console.log("[Hotel booking API submit]", hotelBookingPayload);
           await createHotelBooking(hotelBookingPayload);
         } catch (hotelBookingError) {
           console.warn("[Checkout] Hotel booking create failed:", hotelBookingError);

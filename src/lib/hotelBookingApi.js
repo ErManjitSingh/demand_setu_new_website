@@ -1,7 +1,8 @@
 import { buildApiUrl } from "@/lib/apiConfig";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 export async function createHotelBooking(payload) {
-  const response = await fetch(buildApiUrl("api/hotelbooking/create"), {
+  const response = await fetchWithTimeout(buildApiUrl("api/hotelbooking/create"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

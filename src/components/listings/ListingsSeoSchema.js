@@ -1,3 +1,7 @@
+function safeJsonLd(schema) {
+  return JSON.stringify(schema).replace(/</g, "\\u003c");
+}
+
 /** JSON-LD for SEO listing pages (FAQ + destination). */
 export default function ListingsSeoSchema({ seo }) {
   if (!seo) return null;
@@ -43,7 +47,7 @@ export default function ListingsSeoSchema({ seo }) {
         <script
           key={i}
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }}
         />
       ))}
     </>

@@ -1,4 +1,5 @@
 import { buildApiUrl } from "@/lib/apiConfig";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { toLocationSlug } from "@/lib/listingsSlug";
 import {
   mapApiPropertyTypeToCategory,
@@ -90,11 +91,11 @@ export function mapHotelToListing(hotel) {
 
 export async function fetchHotelsByState(stateName) {
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       buildApiUrl(
         `api/packagemaker//get-packagemaker-hotels-by-state/${encodeURIComponent(stateName)}`
       ),
-      { cache: "no-store" }
+      { next: { revalidate: 300 } }
     );
     if (!response.ok) return [];
     const payload = await response.json();
@@ -107,11 +108,11 @@ export async function fetchHotelsByState(stateName) {
 
 export async function fetchHotelsByCity(cityName) {
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       buildApiUrl(
         `api/packagemaker//get-packagemaker-hotels-by-city-pi/${encodeURIComponent(cityName)}`
       ),
-      { cache: "no-store" }
+      { next: { revalidate: 300 } }
     );
     if (!response.ok) return [];
     const payload = await response.json();
@@ -144,9 +145,9 @@ export async function fetchHotelsByFilters({
     if (city) params.set("cityName", city);
     if (state) params.set("stateName", state);
 
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       buildApiUrl(`api/packagemaker/get-packagemaker-hotels-by-filters?${params}`),
-      { cache: "no-store" }
+      { next: { revalidate: 300 } }
     );
     if (!response.ok) return [];
     const payload = await response.json();
@@ -171,7 +172,7 @@ export async function fetchHotelById(id) {
   if (!HOTEL_ID_PATTERN.test(hotelId)) return null;
 
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       buildApiUrl(
         `api/packagemaker/get-packagemaker-by-id/${encodeURIComponent(hotelId)}`
       ),

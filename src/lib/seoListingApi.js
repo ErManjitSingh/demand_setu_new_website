@@ -1,6 +1,30 @@
 import { cache } from "react";
+import DOMPurify from "isomorphic-dompurify";
 import { buildApiUrl } from "@/lib/apiConfig";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { inferLocationType } from "@/lib/logSearchSelection";
+
+const SEO_HTML_SANITIZE_OPTIONS = {
+  ALLOWED_TAGS: [
+    "p",
+    "br",
+    "strong",
+    "em",
+    "b",
+    "i",
+    "u",
+    "h2",
+    "h3",
+    "h4",
+    "ul",
+    "ol",
+    "li",
+    "a",
+    "blockquote",
+    "span",
+  ],
+  ALLOWED_ATTR: ["href", "title", "class", "target", "rel"],
+};
 
 /** Build `/api/seo-listing/:category/:locationType/:stateOrCity` from listings search. */
 export function buildSeoListingApiPath({ category, city = "", state = "", locationKind = null }) {
@@ -26,7 +50,7 @@ export async function fetchSeoListingData(search) {
   const path = buildSeoListingApiPath(search);
   if (!path) return null;
 
-  const response = await fetch(buildApiUrl(path), {
+  const response = await fetchWithTimeout(buildApiUrl(path), {
     next: { revalidate: 3600 },
   });
   if (!response.ok) {
@@ -93,6 +117,13 @@ export function prepareSeoHtml(html) {
   }
 
   return value;
+}
+
+/** Prepare CMS HTML and strip unsafe tags/attributes before client render. */
+export function sanitizeSeoHtml(html) {
+  const prepared = prepareSeoHtml(html);
+  if (!prepared) return "";
+  return DOMPurify.sanitize(prepared, SEO_HTML_SANITIZE_OPTIONS);
 }
 
 export function seoTagsFromRecord(seo) {

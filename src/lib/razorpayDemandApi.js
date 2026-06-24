@@ -1,4 +1,5 @@
 import { buildApiUrl } from "@/lib/apiConfig";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 async function parseResponse(response) {
   const payload = await response.json().catch(() => ({}));
@@ -13,14 +14,14 @@ async function parseResponse(response) {
 }
 
 export async function getDemandRazorpayKey() {
-  const response = await fetch(buildApiUrl("api/razorpay-demand/key"), {
+  const response = await fetchWithTimeout(buildApiUrl("api/razorpay-demand/key"), {
     cache: "no-store",
   });
   return parseResponse(response);
 }
 
 export async function createDemandOrder(body) {
-  const response = await fetch(buildApiUrl("api/razorpay-demand/order"), {
+  const response = await fetchWithTimeout(buildApiUrl("api/razorpay-demand/order"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -29,7 +30,7 @@ export async function createDemandOrder(body) {
 }
 
 export async function verifyDemandPayment(body) {
-  const response = await fetch(buildApiUrl("api/razorpay-demand/verify"), {
+  const response = await fetchWithTimeout(buildApiUrl("api/razorpay-demand/verify"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -112,7 +113,7 @@ export async function payInventoryBookingOnline(booking) {
 }
 
 export async function getDemandPayment(orderId) {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildApiUrl(`api/razorpay-demand/order/${encodeURIComponent(orderId)}`),
     { cache: "no-store" }
   );

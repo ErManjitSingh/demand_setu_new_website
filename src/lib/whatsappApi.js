@@ -1,4 +1,5 @@
 import { buildApiUrl } from "@/lib/apiConfig";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 const BOOKING_WELCOME_TEMPLATE = {
   templateName: "website_static_template",
@@ -38,7 +39,7 @@ async function sendWhatsAppTemplate({ mobile, templateName, language, components
     body.components = components;
   }
 
-  const response = await fetch(buildApiUrl("api/whatsapp/send-template"), {
+  const response = await fetchWithTimeout(buildApiUrl("api/whatsapp/send-template"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

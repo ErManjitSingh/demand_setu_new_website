@@ -2,7 +2,7 @@ import Image from "next/image";
 import {
   isHtmlContent,
   normalizeSeoRichText,
-  prepareSeoHtml,
+  sanitizeSeoHtml,
   seoTagsFromRecord,
   splitSeoParagraphs,
 } from "@/lib/seoListingApi";
@@ -47,7 +47,7 @@ function SeoRichText({ content }) {
     return (
       <div
         className="seo-html text-sm leading-relaxed text-muted sm:text-base"
-        dangerouslySetInnerHTML={{ __html: prepareSeoHtml(value) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeSeoHtml(value) }}
       />
     );
   }
