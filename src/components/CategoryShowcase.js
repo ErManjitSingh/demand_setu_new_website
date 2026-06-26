@@ -2,10 +2,13 @@
 
 import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCategoryExplore } from "@/hooks/useCategoryExplore";
-import { CATEGORIES } from "@/lib/listings";
+import { HOME_COLLECTIONS } from "@/lib/categoryExplore";
 
 function CategoryCard({ cat, className = "", onExplore }) {
+  const countSuffix = cat.countSuffix ?? "stays";
+
   return (
     <article
       className={`card-shine group relative block overflow-hidden rounded-3xl shadow-xl ring-1 ring-stone-900/10 transition hover:-translate-y-1 hover:shadow-2xl ${className}`}
@@ -24,7 +27,7 @@ function CategoryCard({ cat, className = "", onExplore }) {
         <div className="absolute left-0 right-0 top-0 flex items-start justify-between p-5">
           <span className="text-4xl drop-shadow-lg">{cat.icon}</span>
           <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white backdrop-blur-md">
-            {cat.count} stays
+            {cat.count} {countSuffix}
           </span>
         </div>
 
@@ -48,6 +51,7 @@ function CategoryCard({ cat, className = "", onExplore }) {
 }
 
 export default function CategoryShowcase() {
+  const router = useRouter();
   const trackRef = useRef(null);
   const [active, setActive] = useState(0);
   const { openExplore, modal } = useCategoryExplore();
@@ -68,14 +72,18 @@ export default function CategoryShowcase() {
     const slideWidth = track.children[0].offsetWidth;
     const gap = 16;
     const index = Math.round(track.scrollLeft / (slideWidth + gap));
-    setActive(Math.min(Math.max(index, 0), CATEGORIES.length - 1));
+    setActive(Math.min(Math.max(index, 0), HOME_COLLECTIONS.length - 1));
   }, []);
 
   const handleExplore = useCallback(
     (cat) => {
+      if (cat.href) {
+        router.push(cat.href);
+        return;
+      }
       openExplore(cat);
     },
-    [openExplore]
+    [openExplore, router]
   );
 
   return (
@@ -87,7 +95,7 @@ export default function CategoryShowcase() {
           onScroll={onScroll}
           className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-2"
         >
-          {CATEGORIES.map((cat) => (
+          {HOME_COLLECTIONS.map((cat) => (
             <div
               key={cat.id}
               className="w-[85vw] max-w-[320px] shrink-0 snap-center"
@@ -99,7 +107,7 @@ export default function CategoryShowcase() {
 
         <div className="mt-5 flex flex-col items-center gap-3">
           <div className="flex items-center gap-2">
-            {CATEGORIES.map((cat, i) => (
+            {HOME_COLLECTIONS.map((cat, i) => (
               <button
                 key={cat.id}
                 type="button"
@@ -112,19 +120,19 @@ export default function CategoryShowcase() {
             ))}
           </div>
           <p className="text-xs font-medium text-muted">
-            Swipe to explore · {active + 1} / {CATEGORIES.length}
+            Swipe to explore · {active + 1} / {HOME_COLLECTIONS.length}
           </p>
         </div>
       </div>
 
       {/* Desktop grid */}
-      <div className="mt-8 hidden gap-5 sm:grid sm:grid-cols-3">
-        {CATEGORIES.map((cat, i) => (
+      <div className="mt-8 hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-4">
+        {HOME_COLLECTIONS.map((cat, i) => (
           <CategoryCard
             key={cat.id}
             cat={cat}
             onExplore={handleExplore}
-            className={i === 1 ? "sm:-mt-4 sm:mb-4" : ""}
+            className={i === 1 ? "lg:-mt-4 lg:mb-4" : ""}
           />
         ))}
       </div>

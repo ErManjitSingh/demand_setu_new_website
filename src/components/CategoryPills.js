@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CATEGORIES } from "@/lib/listings";
-import { ALL_STAYS_CATEGORY } from "@/lib/categoryExplore";
+import { ALL_STAYS_CATEGORY, TOUR_PACKAGES_CATEGORY } from "@/lib/categoryExplore";
 import { useCategoryExplore } from "@/hooks/useCategoryExplore";
 import {
   buildListingsUrlPreservingFilters,
@@ -79,6 +79,10 @@ function CategoryPillsClient({ activeCategory = "all" }) {
   };
 
   const handleClick = (catId) => {
+    if (catId === TOUR_PACKAGES_CATEGORY.id) {
+      router.push(TOUR_PACKAGES_CATEGORY.href);
+      return;
+    }
     if (hasLocation) {
       setCategory(catId);
       return;
@@ -116,6 +120,16 @@ function CategoryPillsClient({ activeCategory = "all" }) {
             {cat.label}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => handleClick(TOUR_PACKAGES_CATEGORY.id)}
+          className={`flex shrink-0 items-center gap-2.5 rounded-2xl px-5 py-3 text-sm font-bold transition ${pillClass(false)}`}
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-muted text-lg">
+            {TOUR_PACKAGES_CATEGORY.icon}
+          </span>
+          {TOUR_PACKAGES_CATEGORY.label}
+        </button>
       </div>
       {!hasLocation && modal}
     </>
