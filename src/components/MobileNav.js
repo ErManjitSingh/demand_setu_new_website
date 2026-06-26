@@ -6,12 +6,7 @@ import { useCategoryExplore } from "@/hooks/useCategoryExplore";
 
 const tabs = [
   { href: "/", label: "Home", explore: null, match: (p) => p === "/" },
-  {
-    href: "/packages",
-    label: "Tours",
-    explore: null,
-    match: (p) => p === "/packages" || p.startsWith("/packages/"),
-  },
+  { href: "/stays", label: "Stays", explore: null, match: (p) => p === "/stays" },
   {
     href: "/listings",
     label: "Explore",
@@ -83,7 +78,7 @@ export default function MobileNav() {
 function TabIcon({ name, active }) {
   const stroke = active ? 2.5 : 1.5;
   const cls = `h-5 w-5 ${active ? "text-white" : ""}`;
-  if (name === "Home") {
+  if (name === "Home" || name === "Stays") {
     return (
       <svg className={cls} fill={active ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : stroke}>
         {active && <path d="M11.47 3.841a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.061l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 101.061 1.06l8.689-8.69z" />}

@@ -11,6 +11,7 @@ import {
   parseListingsUrl,
   parseTripFromSearchParams,
 } from "@/lib/bookingSearch";
+import { startNavigationLoading } from "@/lib/navigationLoading";
 import { isListingsSlugPath } from "@/lib/listingsSlug";
 
 function CategoryPillsClient({ activeCategory = "all" }) {
@@ -80,6 +81,7 @@ function CategoryPillsClient({ activeCategory = "all" }) {
 
   const handleClick = (catId) => {
     if (catId === TOUR_PACKAGES_CATEGORY.id) {
+      startNavigationLoading();
       router.push(TOUR_PACKAGES_CATEGORY.href);
       return;
     }

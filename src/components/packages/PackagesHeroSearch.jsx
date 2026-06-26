@@ -130,6 +130,9 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
   const [travelDate, setTravelDate] = useState(toDateInputValue(defaultDates.checkIn));
   const [tourType, setTourType] = useState("private");
   const [adults, setAdults] = useState(2);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [mobile, setMobile] = useState("");
   const [error, setError] = useState("");
 
   const countryOptions = useMemo(() => getCountrySearchOptions(), []);
@@ -189,6 +192,18 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
       setError("Please select a tour type");
       return;
     }
+    if (!name.trim()) {
+      setError("Please enter your name");
+      return;
+    }
+    if (!email.trim()) {
+      setError("Please enter your email");
+      return;
+    }
+    if (!mobile.trim()) {
+      setError("Please enter your mobile number");
+      return;
+    }
 
     const tourTypeLabel =
       TOUR_TYPES.find((t) => t.value === tourType)?.label ?? tourType;
@@ -203,6 +218,9 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
       travelDate,
       tourType: tourTypeLabel,
       adults,
+      name: name.trim(),
+      email: email.trim(),
+      mobile: mobile.trim(),
     };
     console.log("Hero tour enquiry:", payload);
   };
@@ -306,6 +324,79 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
                 </FormField>
 
                 <div className="grid gap-3 sm:grid-cols-2">
+                  <FormField label="Full name">
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        if (error) setError("");
+                      }}
+                      className={inputClass}
+                      placeholder="Your name"
+                      autoComplete="name"
+                    />
+                  </FormField>
+
+                  <FormField label="Email">
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (error) setError("");
+                      }}
+                      className={inputClass}
+                      placeholder="you@email.com"
+                      autoComplete="email"
+                    />
+                  </FormField>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <FormField label="Mobile">
+                    <input
+                      type="tel"
+                      required
+                      value={mobile}
+                      onChange={(e) => {
+                        setMobile(e.target.value);
+                        if (error) setError("");
+                      }}
+                      className={inputClass}
+                      placeholder="+91"
+                      autoComplete="tel"
+                    />
+                  </FormField>
+
+                  <FormField label="Number of adults">
+                    <div className="flex h-[42px] items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-3">
+                      <button
+                        type="button"
+                        onClick={() => setAdults((n) => Math.max(1, n - 1))}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 bg-white text-lg font-bold text-stone-600 transition hover:border-brand hover:text-brand"
+                        aria-label="Decrease adults"
+                      >
+                        −
+                      </button>
+                      <span className="text-base font-bold text-stone-900">
+                        {adults} Adult{adults !== 1 ? "s" : ""}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setAdults((n) => Math.min(50, n + 1))}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 bg-white text-lg font-bold text-stone-600 transition hover:border-brand hover:text-brand"
+                        aria-label="Increase adults"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </FormField>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
                   <FormField label="Travel date">
                     <input
                       type="date"
@@ -338,30 +429,6 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
                     </select>
                   </FormField>
                 </div>
-
-                <FormField label="Number of adults">
-                  <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => setAdults((n) => Math.max(1, n - 1))}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 bg-white text-lg font-bold text-stone-600 transition hover:border-brand hover:text-brand"
-                      aria-label="Decrease adults"
-                    >
-                      −
-                    </button>
-                    <span className="text-base font-bold text-stone-900">
-                      {adults} Adult{adults !== 1 ? "s" : ""}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setAdults((n) => Math.min(50, n + 1))}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 bg-white text-lg font-bold text-stone-600 transition hover:border-brand hover:text-brand"
-                      aria-label="Increase adults"
-                    >
-                      +
-                    </button>
-                  </div>
-                </FormField>
 
                 {error && (
                   <p className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-600">

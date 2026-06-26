@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { startNavigationLoading } from "@/lib/navigationLoading";
 import { useCategoryExplore } from "@/hooks/useCategoryExplore";
 import { HOME_COLLECTIONS } from "@/lib/categoryExplore";
 
@@ -78,6 +79,7 @@ export default function CategoryShowcase() {
   const handleExplore = useCallback(
     (cat) => {
       if (cat.href) {
+        startNavigationLoading();
         router.push(cat.href);
         return;
       }

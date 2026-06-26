@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MobileNav from "@/components/MobileNav";
 import AppProviders from "@/components/providers/AppProviders";
+import NavigationProgress from "@/components/NavigationProgress";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -13,9 +14,9 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata = {
-  title: "Demand Setu | Hotels, Airbnb & Villas",
+  title: "Demand Setu Tours | Tour Packages Across India & The World",
   description:
-    "Book curated hotels, Airbnbs, homestays and private villas across India with Demand Setu.",
+    "Tour packages across India and the world — explore states, cities and famous itineraries with Demand Setu.",
 };
 
 export default function RootLayout({ children }) {
@@ -23,6 +24,7 @@ export default function RootLayout({ children }) {
     <html lang="en" className={`${jakarta.variable} h-full`}>
       <body className="flex min-h-full flex-col antialiased">
         <AppProviders>
+          <NavigationProgress />
           <Header />
           <main className="flex-1">{children}</main>
           <Footer />
