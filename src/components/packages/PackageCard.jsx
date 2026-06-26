@@ -43,7 +43,7 @@ function EnquireButton({ onClick, className = "" }) {
     <button
       type="button"
       onClick={onClick}
-      className={`group/btn inline-flex items-center gap-2 rounded-full bg-stone-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand ${className}`}
+      className={`group/btn inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:brightness-105 ${className}`}
     >
       View details
       <ArrowIcon />
@@ -198,7 +198,7 @@ export default function PackageCard({ tourPackage, onViewDetails, variant = "def
           <button
             type="button"
             onClick={() => onViewDetails(tourPackage)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800 transition hover:border-stone-900 hover:bg-stone-900 hover:text-white"
+            className="inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-105"
           >
             Details
             <ArrowIcon />

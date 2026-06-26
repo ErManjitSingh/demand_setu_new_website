@@ -20,8 +20,8 @@ const HERO_SLIDES = [
     alt: "Ladakh",
   },
   {
-    src: "https://images.pexels.com/photos/31023337/pexels-photo-31023337.jpeg",
-    alt: "Dubai",
+    src: "https://images.pexels.com/photos/6904721/pexels-photo-6904721.jpeg",
+    alt: "Nepal",
   },
 ];
 
@@ -120,7 +120,7 @@ function HeroBackground({ activeIndex }) {
   );
 }
 
-export default function PackagesHeroSearch({ states = [], cities = [], onSearchEnquiry }) {
+export default function PackagesHeroSearch({ states = [], cities = [] }) {
   const defaultDates = useMemo(() => getDefaultBookingDates(), []);
   const [slideIndex, setSlideIndex] = useState(0);
   const [tab, setTab] = useState("country");
@@ -194,15 +194,17 @@ export default function PackagesHeroSearch({ states = [], cities = [], onSearchE
       TOUR_TYPES.find((t) => t.value === tourType)?.label ?? tourType;
 
     setError("");
-    onSearchEnquiry?.({
+    const payload = {
+      destinationType: tab,
       country: tab === "country" ? location : "India",
       state: tab === "state" ? location : "",
       city: tab === "city" ? location : "",
-      label: `${location} tour enquiry`,
-      adults,
+      location,
       travelDate,
       tourType: tourTypeLabel,
-    });
+      adults,
+    };
+    console.log("Hero tour enquiry:", payload);
   };
 
   return (
@@ -258,14 +260,13 @@ export default function PackagesHeroSearch({ states = [], cities = [], onSearchE
           {/* Right — enquiry form */}
           <div className="animate-hero-enter-delay-2 w-full lg:justify-self-end">
             <div className="overflow-hidden rounded-2xl border border-white/20 bg-white shadow-[0_32px_80px_-20px_rgba(0,0,0,0.45)] ring-1 ring-stone-900/5">
-              <div className="border-b border-stone-100 bg-gradient-to-r from-brand-muted to-white px-6 py-5">
+              <div className="border-b border-stone-100 bg-gradient-to-r from-brand-muted to-white px-5 py-4">
                 <p className="text-lg font-extrabold text-stone-900">Plan your trip</p>
-               
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5 p-6">
+              <form onSubmit={handleSubmit} className="space-y-3 p-5">
                 <div>
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-stone-500">
+                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-500">
                     Destination type
                   </span>
                   <div className="grid grid-cols-3 gap-1 rounded-xl border border-stone-200 bg-stone-50 p-1">
@@ -304,7 +305,7 @@ export default function PackagesHeroSearch({ states = [], cities = [], onSearchE
                   />
                 </FormField>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <FormField label="Travel date">
                     <input
                       type="date"
@@ -339,11 +340,11 @@ export default function PackagesHeroSearch({ states = [], cities = [], onSearchE
                 </div>
 
                 <FormField label="Number of adults">
-                  <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5">
+                  <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => setAdults((n) => Math.max(1, n - 1))}
-                      className="flex h-10 w-10 items-center justify-center rounded-lg border border-stone-200 bg-white text-xl font-bold text-stone-600 transition hover:border-brand hover:text-brand"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 bg-white text-lg font-bold text-stone-600 transition hover:border-brand hover:text-brand"
                       aria-label="Decrease adults"
                     >
                       −
@@ -354,7 +355,7 @@ export default function PackagesHeroSearch({ states = [], cities = [], onSearchE
                     <button
                       type="button"
                       onClick={() => setAdults((n) => Math.min(50, n + 1))}
-                      className="flex h-10 w-10 items-center justify-center rounded-lg border border-stone-200 bg-white text-xl font-bold text-stone-600 transition hover:border-brand hover:text-brand"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 bg-white text-lg font-bold text-stone-600 transition hover:border-brand hover:text-brand"
                       aria-label="Increase adults"
                     >
                       +
@@ -370,7 +371,7 @@ export default function PackagesHeroSearch({ states = [], cities = [], onSearchE
 
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-brand py-4 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-brand/30 transition hover:brightness-105"
+                  className="w-full rounded-xl bg-brand py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-brand/30 transition hover:brightness-105"
                 >
                   Submit enquiry
                 </button>
@@ -388,12 +389,12 @@ export default function PackagesHeroSearch({ states = [], cities = [], onSearchE
 }
 
 const inputClass =
-  "w-full rounded-xl border border-stone-200 bg-white px-3.5 py-3 text-sm font-medium text-stone-900 outline-none ring-brand/30 transition focus:border-brand focus:ring-2";
+  "w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm font-medium text-stone-900 outline-none ring-brand/30 transition focus:border-brand focus:ring-2";
 
 function FormField({ label, children, className = "" }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-2 block text-sm font-bold text-stone-800">{label}</span>
+      <span className="mb-1 block text-sm font-bold text-stone-800">{label}</span>
       {children}
     </label>
   );

@@ -111,7 +111,7 @@ export default function FamousPackagesSection({ packages = [], onViewDetails }) 
                     <button
                       type="button"
                       onClick={() => onViewDetails?.(pkg)}
-                      className="rounded-full bg-stone-900 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-brand"
+                      className="rounded-full bg-brand px-5 py-2.5 text-xs font-bold text-white transition hover:brightness-105"
                     >
                       View detail
                     </button>

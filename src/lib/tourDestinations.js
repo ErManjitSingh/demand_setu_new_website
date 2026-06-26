@@ -12,13 +12,13 @@ export const COUNTRIES = [
     name: "Nepal",
     tagline: "Himalayan adventures",
     fromPrice: 12999,
-    image: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&q=80",
+    image: "https://images.pexels.com/photos/417173/pexels-photo-417173.jpeg",
   },
   {
     name: "Bhutan",
     tagline: "Land of happiness",
     fromPrice: 24999,
-    image: "https://images.unsplash.com/photo-1589308078059-141d08954a05?w=800&q=80",
+    image: "https://images.pexels.com/photos/6904721/pexels-photo-6904721.jpeg",
   },
   {
     name: "Thailand",
@@ -87,6 +87,48 @@ export const COUNTRIES = [
     tagline: "Halong to Hoi An",
     fromPrice: 47999,
     image: "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&q=80",
+  },
+  {
+    name: "Turkey",
+    tagline: "Where East meets West",
+    fromPrice: 69999,
+    image: "https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=800&q=80",
+  },
+  {
+    name: "France",
+    tagline: "Romance & art capital",
+    fromPrice: 119999,
+    image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80",
+  },
+  {
+    name: "Egypt",
+    tagline: "Pyramids & Nile cruises",
+    fromPrice: 74999,
+    image: "https://images.pexels.com/photos/18291196/pexels-photo-18291196.jpeg",
+  },
+  {
+    name: "Australia",
+    tagline: "Reefs, cities & outback",
+    fromPrice: 149999,
+    image: "https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=800&q=80",
+  },
+  {
+    name: "Greece",
+    tagline: "Islands & ancient ruins",
+    fromPrice: 94999,
+    image: "https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=800&q=80",
+  },
+  {
+    name: "South Africa",
+    tagline: "Safari & Cape Town",
+    fromPrice: 89999,
+    image: "https://images.pexels.com/photos/38206246/pexels-photo-38206246.jpeg",
+  },
+  {
+    name: "Cambodia",
+    tagline: "Angkor Wat wonders",
+    fromPrice: 38999,
+    image: "https://images.pexels.com/photos/19063365/pexels-photo-19063365.jpeg",
   },
 ];
 

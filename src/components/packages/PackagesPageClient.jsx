@@ -40,11 +40,7 @@ export default function PackagesPageClient({ states = [], cities = [] }) {
 
   return (
     <>
-      <PackagesHeroSearch
-        states={states}
-        cities={cities}
-        onSearchEnquiry={openLocationEnquiry}
-      />
+      <PackagesHeroSearch states={states} cities={cities} />
       <PackagesContentMarquee />
       <PackagesExploreStates states={states} onEnquire={openLocationEnquiry} />
       <PackagesExploreCountries onEnquire={openLocationEnquiry} />
