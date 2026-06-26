@@ -5,6 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getCountrySearchOptions } from "@/lib/tourDestinations";
 import { getDefaultBookingDates } from "@/lib/dates";
 import PackageLocationCombobox from "@/components/packages/PackageLocationCombobox";
+import { submitTourLeadFromClient } from "@/lib/tourLeadClient";
+import {
+  TOUR_ENQUIRY_TYPES,
+  buildEnquiryDestination,
+  resolveTourTypeLabel,
+} from "@/lib/tourEnquiryTypes";
 
 const HERO_SLIDES = [
   {
@@ -37,14 +43,7 @@ const HERO_PERKS = [
   "Custom itineraries on request",
 ];
 
-const TOUR_TYPES = [
-  { value: "private", label: "Private tour" },
-  { value: "group", label: "Group tour" },
-  { value: "corporate", label: "Corporate / MICE" },
-  { value: "honeymoon", label: "Honeymoon" },
-  { value: "family", label: "Family package" },
-  { value: "custom", label: "Custom itinerary" },
-];
+const TOUR_TYPES = TOUR_ENQUIRY_TYPES;
 
 const SLIDE_INTERVAL_MS = 5000;
 
@@ -133,7 +132,10 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
+  const [ticketBooked, setTicketBooked] = useState("no");
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const countryOptions = useMemo(() => getCountrySearchOptions(), []);
 
@@ -175,8 +177,10 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
     if (error) setError("");
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+
     const location =
       tab === "country" ? country : tab === "state" ? state : city;
 
@@ -205,24 +209,47 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
       return;
     }
 
-    const tourTypeLabel =
-      TOUR_TYPES.find((t) => t.value === tourType)?.label ?? tourType;
+    const tourTypeLabel = resolveTourTypeLabel(tourType);
+
+    const leadCountry = tab === "country" ? location : "India";
+    const leadState = tab === "state" ? location : "";
+    const leadCity = tab === "city" ? location : "";
+    const destination = buildEnquiryDestination({
+      city: leadCity,
+      state: leadState,
+      country: leadCountry,
+      location,
+    });
 
     setError("");
-    const payload = {
-      destinationType: tab,
-      country: tab === "country" ? location : "India",
-      state: tab === "state" ? location : "",
-      city: tab === "city" ? location : "",
-      location,
-      travelDate,
-      tourType: tourTypeLabel,
-      adults,
-      name: name.trim(),
-      email: email.trim(),
-      mobile: mobile.trim(),
-    };
-    console.log("Hero tour enquiry:", payload);
+    setSuccessMessage("");
+    setSubmitting(true);
+
+    try {
+      const result = await submitTourLeadFromClient({
+        name: name.trim(),
+        email: email.trim(),
+        mobile: mobile.trim(),
+        adults: String(adults),
+        city: leadCity,
+        state: leadState,
+        country: leadCountry,
+        location,
+        destination,
+        tourType: tourTypeLabel,
+        travelDate,
+        flightTrainTicketBooked: ticketBooked,
+      });
+
+      setSuccessMessage(
+        result.message ||
+          "Enquiry submitted successfully! Our travel experts will contact you shortly."
+      );
+    } catch (submitError) {
+      setError(submitError.message || "Failed to submit enquiry. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -305,23 +332,50 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
                   </div>
                 </div>
 
-                <FormField label="Where to?">
-                  <PackageLocationCombobox
-                    key={tab}
-                    options={locationOptions}
-                    value={selectedValue}
-                    onChange={onLocationChange}
-                    placeholder={locationPlaceholder}
-                    highlightFirst={tab === "country" ? "India" : null}
-                    emptyMessage={
-                      tab === "country"
-                        ? "No matching country"
-                        : tab === "state"
-                          ? "No matching state"
-                          : "No matching city"
-                    }
-                  />
-                </FormField>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <FormField label="Where to?">
+                    <PackageLocationCombobox
+                      key={tab}
+                      options={locationOptions}
+                      value={selectedValue}
+                      onChange={onLocationChange}
+                      placeholder={locationPlaceholder}
+                      highlightFirst={tab === "country" ? "India" : null}
+                      emptyMessage={
+                        tab === "country"
+                          ? "No matching country"
+                          : tab === "state"
+                            ? "No matching state"
+                            : "No matching city"
+                      }
+                    />
+                  </FormField>
+
+                  <FormField label="Flight / Train Ticket Booked?">
+                    <div className="grid grid-cols-2 gap-1 rounded-xl border border-stone-200 bg-stone-50 p-1">
+                      {[
+                        { value: "yes", label: "Yes" },
+                        { value: "no", label: "No" },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setTicketBooked(option.value);
+                            if (error) setError("");
+                          }}
+                          className={`rounded-lg px-2 py-2.5 text-sm font-bold transition ${
+                            ticketBooked === option.value
+                              ? "bg-brand text-white shadow-sm"
+                              : "text-stone-600 hover:bg-white hover:text-stone-900"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </FormField>
+                </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <FormField label="Full name">
@@ -436,11 +490,18 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
                   </p>
                 )}
 
+                {successMessage && (
+                  <p className="rounded-xl bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-700">
+                    {successMessage}
+                  </p>
+                )}
+
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-brand py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-brand/30 transition hover:brightness-105"
+                  disabled={submitting}
+                  className="w-full rounded-xl bg-brand py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-brand/30 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  Submit enquiry
+                  {submitting ? "Submitting…" : "Submit enquiry"}
                 </button>
 
                 <p className="text-center text-[11px] text-stone-400">

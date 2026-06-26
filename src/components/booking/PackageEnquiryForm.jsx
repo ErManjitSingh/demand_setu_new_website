@@ -4,6 +4,21 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { getPackageImage } from "@/lib/tourPackages";
+import { submitTourLeadFromClient } from "@/lib/tourLeadClient";
+import {
+  TOUR_ENQUIRY_TYPES,
+  buildEnquiryDestination,
+  resolveTourTypeLabel,
+} from "@/lib/tourEnquiryTypes";
+
+function defaultTourTypeValue(tourPackage) {
+  const preset = tourPackage?.defaultTourType?.trim();
+  if (!preset) return "private";
+  const match = TOUR_ENQUIRY_TYPES.find(
+    (t) => t.value === preset || t.label.toLowerCase() === preset.toLowerCase()
+  );
+  return match?.value ?? "private";
+}
 
 export default function PackageEnquiryForm({
   open,
@@ -14,12 +29,17 @@ export default function PackageEnquiryForm({
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [form, setForm] = useState({
     name: "",
     phone: "",
     email: "",
     travelDate: "",
     travellers: "2",
+    tourType: "private",
+    ticketBooked: "no",
   });
 
   useEffect(() => setMounted(true), []);
@@ -32,12 +52,17 @@ export default function PackageEnquiryForm({
     if (!tourPackage) return undefined;
 
     setSubmitted(false);
+    setSubmitting(false);
+    setSubmitError("");
+    setSuccessMessage("");
     setForm({
       name: "",
       phone: "",
       email: "",
       travelDate: tourPackage.defaultTravelDate || "",
       travellers: String(tourPackage.defaultTravellers ?? 2),
+      tourType: defaultTourTypeValue(tourPackage),
+      ticketBooked: "no",
     });
     setVisible(true);
 
@@ -60,30 +85,61 @@ export default function PackageEnquiryForm({
   if (!tourPackage) return null;
   if (!embedded && (!mounted || !open)) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const travellers = Number.parseInt(form.travellers, 10) || 2;
-    const body = [
-      `Tour package enquiry`,
-      ``,
-      `Package: ${tourPackage.title}`,
-      `Duration: ${tourPackage.duration}`,
-      `Destination: ${tourPackage.location}`,
-      tourPackage.defaultTourType ? `Tour type: ${tourPackage.defaultTourType}` : null,
-      ``,
-      `Name: ${form.name}`,
-      `Phone: ${form.phone}`,
-      `Email: ${form.email}`,
-      `Preferred travel date: ${form.travelDate || "Flexible"}`,
-      `Adults: ${travellers}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    if (submitting) return;
 
-    const subject = encodeURIComponent(`Tour enquiry — ${tourPackage.title}`);
-    const mailBody = encodeURIComponent(body);
-    window.location.href = `mailto:info@demandsetutours.com?subject=${subject}&body=${mailBody}`;
-    setSubmitted(true);
+    const travellers = Number.parseInt(form.travellers, 10) || 2;
+    setSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const packageCity =
+        tourPackage.city ||
+        (tourPackage.location &&
+        tourPackage.location !== tourPackage.state &&
+        tourPackage.location !== tourPackage.country
+          ? tourPackage.location.split(",")[0]?.trim()
+          : "");
+
+      const packageState = tourPackage.state || "";
+      const packageCountry = tourPackage.country || "India";
+      const destination =
+        tourPackage.destination ||
+        buildEnquiryDestination({
+          city: packageCity,
+          state: packageState,
+          country: packageCountry,
+          location: tourPackage.location,
+          title: tourPackage.title,
+        });
+
+      const result = await submitTourLeadFromClient({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        mobile: form.phone.trim(),
+        adults: String(travellers),
+        city: packageCity,
+        state: packageState,
+        country: packageCountry,
+        location: tourPackage.location || destination,
+        destination,
+        title: tourPackage.title,
+        tourType: resolveTourTypeLabel(form.tourType),
+        travelDate: form.travelDate || null,
+        flightTrainTicketBooked: form.ticketBooked,
+      });
+
+      setSuccessMessage(
+        result.message ||
+          "Enquiry submitted successfully! Our travel experts will contact you shortly."
+      );
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(error.message || "Failed to submit enquiry. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const panel = (
@@ -161,10 +217,10 @@ export default function PackageEnquiryForm({
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600">
               ✓
             </span>
-            <p className="mt-4 text-base font-bold text-foreground">Enquiry ready to send</p>
+            <p className="mt-4 text-base font-bold text-foreground">Enquiry submitted!</p>
             <p className="mt-2 text-sm text-muted">
-              Your email app should open with the details. Our travel experts will get back to you
-              shortly.
+              {successMessage ||
+                "Our travel experts will get back to you shortly."}
             </p>
             <button
               type="button"
@@ -222,6 +278,45 @@ export default function PackageEnquiryForm({
               />
             </Field>
 
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <Field label="Tour type" required>
+                <select
+                  required
+                  value={form.tourType}
+                  onChange={(e) => setForm((f) => ({ ...f, tourType: e.target.value }))}
+                  className={inputClass}
+                >
+                  {TOUR_ENQUIRY_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Flight / Train Ticket Booked?">
+                <div className="grid grid-cols-2 gap-1 rounded-xl border border-stone-200 bg-stone-50 p-1">
+                  {[
+                    { value: "yes", label: "Yes" },
+                    { value: "no", label: "No" },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, ticketBooked: option.value }))}
+                      className={`rounded-lg px-2 py-2 text-sm font-bold transition ${
+                        form.ticketBooked === option.value
+                          ? "bg-brand text-white shadow-sm"
+                          : "text-stone-600 hover:bg-white hover:text-stone-900"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+
             <Field label="Number of adults" required>
               <input
                 type="number"
@@ -234,11 +329,18 @@ export default function PackageEnquiryForm({
               />
             </Field>
 
+            {submitError && (
+              <p className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-600">
+                {submitError}
+              </p>
+            )}
+
             <button
               type="submit"
-              className="w-full rounded-full bg-brand py-3.5 text-sm font-bold text-white shadow-lg shadow-brand/25 transition hover:brightness-105"
+              disabled={submitting}
+              className="w-full rounded-full bg-brand py-3.5 text-sm font-bold text-white shadow-lg shadow-brand/25 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Send enquiry
+              {submitting ? "Sending…" : "Send enquiry"}
             </button>
           </form>
         )}

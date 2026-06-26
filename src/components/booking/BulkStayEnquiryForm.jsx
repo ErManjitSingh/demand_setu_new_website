@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { submitStayLeadFromClient } from "@/lib/tourLeadClient";
 function formatGuestSummary({ adults, children, rooms }) {
   const parts = [`${adults} Adult${adults !== 1 ? "s" : ""}`];
   if (children > 0) parts.push(`${children} Child${children !== 1 ? "ren" : ""}`);
@@ -19,6 +20,9 @@ export default function BulkStayEnquiryForm({
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -35,6 +39,9 @@ export default function BulkStayEnquiryForm({
       return undefined;
     }
     setSubmitted(false);
+    setSubmitting(false);
+    setSubmitError("");
+    setSuccessMessage("");
     setForm((prev) => ({
       ...prev,
       rooms: String(requestedRooms),
@@ -62,24 +69,42 @@ export default function BulkStayEnquiryForm({
     rooms: Number.parseInt(form.rooms, 10) || requestedRooms,
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const rooms = Number.parseInt(form.rooms, 10) || requestedRooms;
-    const body = [
-      `Bulk stay enquiry`,
-      ``,
-      `Name: ${form.name}`,
-      `Phone: ${form.phone}`,
-      `Email: ${form.email}`,
-      `Location: ${form.location}`,
-      `Rooms: ${rooms}`,
-      `Guests: ${guestSummary}`,
-    ].join("\n");
+    if (submitting) return;
 
-    const subject = encodeURIComponent(`Bulk stay enquiry — ${rooms} rooms`);
-    const mailBody = encodeURIComponent(body);
-    window.location.href = `mailto:info@demandsetutours.com?subject=${subject}&body=${mailBody}`;
-    setSubmitted(true);
+    const rooms = Number.parseInt(form.rooms, 10) || requestedRooms;
+    const destination = form.location.trim();
+
+    if (!destination) {
+      setSubmitError("Please enter a location");
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const result = await submitStayLeadFromClient({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        mobile: form.phone.trim(),
+        location: destination,
+        destination,
+        rooms: String(rooms),
+        guestSummary,
+      });
+
+      setSuccessMessage(
+        result.message ||
+          "Enquiry submitted successfully! Our team will share the best group rates shortly."
+      );
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(error.message || "Failed to submit enquiry. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return createPortal(
@@ -127,9 +152,10 @@ export default function BulkStayEnquiryForm({
               <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600">
                 ✓
               </span>
-              <p className="mt-4 text-base font-bold text-foreground">Enquiry ready to send</p>
+              <p className="mt-4 text-base font-bold text-foreground">Enquiry submitted!</p>
               <p className="mt-2 text-sm text-muted">
-                Your email app should open with the details. Our team will get back to you shortly.
+                {successMessage ||
+                  "Our team will share the best group rates shortly."}
               </p>
               <button
                 type="button"
@@ -200,11 +226,18 @@ export default function BulkStayEnquiryForm({
                 />
               </Field>
 
+              {submitError && (
+                <p className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-600">
+                  {submitError}
+                </p>
+              )}
+
               <button
                 type="submit"
-                className="w-full rounded-xl bg-brand py-3 text-sm font-bold uppercase tracking-wide text-white shadow-sm hover:opacity-95"
+                disabled={submitting}
+                className="w-full rounded-xl bg-brand py-3 text-sm font-bold uppercase tracking-wide text-white shadow-sm hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Send enquiry
+                {submitting ? "Sending…" : "Send enquiry"}
               </button>
             </form>
           )}

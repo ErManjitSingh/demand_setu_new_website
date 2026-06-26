@@ -13,6 +13,7 @@ import PackagesPopularCities from "@/components/packages/PackagesPopularCities";
 import PackagesPromoBanner from "@/components/packages/PackagesPromoBanner";
 import PackagesWhyTravel from "@/components/packages/PackagesWhyTravel";
 import { DEFAULT_PACKAGE_IMAGE, getFamousPackages } from "@/lib/tourPackages";
+import { buildEnquiryDestination } from "@/lib/tourEnquiryTypes";
 
 export default function PackagesPageClient({ states = [], cities = [] }) {
   const [enquiryPackage, setEnquiryPackage] = useState(null);
@@ -24,11 +25,26 @@ export default function PackagesPageClient({ states = [], cities = [] }) {
 
   const openLocationEnquiry = useCallback(
     ({ country, state, city, label, adults, travelDate, tourType }) => {
+      const enquiryCountry = country || "India";
+      const enquiryState = state || "";
+      const enquiryCity = city || "";
+      const enquiryLocation = [enquiryCity, enquiryState, enquiryCountry].filter(Boolean).join(", ");
+
       setEnquiryPackage({
         id: "custom-enquiry",
-        title: label || city || state || country || "Custom tour",
+        title: label || enquiryCity || enquiryState || enquiryCountry || "Custom tour",
         duration: "Flexible",
-        location: [city, state, country].filter(Boolean).join(", ") || "India",
+        location: enquiryLocation || "India",
+        destination: buildEnquiryDestination({
+          city: enquiryCity,
+          state: enquiryState,
+          country: enquiryCountry,
+          location: enquiryLocation,
+          title: label,
+        }),
+        city: enquiryCity,
+        state: enquiryState,
+        country: enquiryCountry,
         image: DEFAULT_PACKAGE_IMAGE,
         defaultTravellers: adults ?? 2,
         defaultTravelDate: travelDate ?? "",
