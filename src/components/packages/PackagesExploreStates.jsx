@@ -54,7 +54,8 @@ export default function PackagesExploreStates({ states = [], onEnquire }) {
                   onClick={() =>
                     onEnquire?.({ state: stateName, country: "India", label: `${stateName} tour` })
                   }
-                  className="relative block w-full overflow-hidden rounded-2xl text-left shadow-md transition hover:-translate-y-0.5 hover:shadow-lg"
+                  className="relative block w-full overflow-hidden
+                   rounded-2xl text-left shadow-md transition hover:-translate-y-0.5 hover:shadow-lg"
                 >
                   <div className="relative aspect-[16/10]">
                     <Image
