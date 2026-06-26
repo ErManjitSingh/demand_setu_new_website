@@ -104,7 +104,7 @@ export default function PackageLocationCombobox({
               }
             }, 120);
           }}
-          className="min-w-0 flex-1 bg-transparent text-sm font-medium text-stone-900 outline-none placeholder:font-normal placeholder:text-stone-400"
+          className="min-w-0 flex-1 bg-transparent text-base font-medium text-stone-900 outline-none placeholder:font-normal placeholder:text-stone-400"
         />
         <button
           type="button"

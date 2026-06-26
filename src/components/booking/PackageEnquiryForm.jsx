@@ -270,7 +270,7 @@ export default function PackageEnquiryForm({
 }
 
 const inputClass =
-  "w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-foreground outline-none ring-brand/30 transition focus:border-brand focus:ring-2";
+  "w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-base font-medium text-foreground outline-none ring-brand/30 transition focus:border-brand focus:ring-2";
 
 function Field({ label, required, children }) {
   return (
