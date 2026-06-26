@@ -16,6 +16,7 @@ import { useGuestAuth } from "@/hooks/useGuestAuth";
 
 const navLinks = [
   { href: "/", label: "Home", explore: null },
+  { href: "/packages", label: "Tour packages", explore: null },
   { href: "/listings", label: "Explore", explore: "all" },
   { href: null, label: "Hotels", explore: "hotel" },
   { href: null, label: "Airbnb", explore: "airbnb" },
@@ -71,26 +72,40 @@ export default function Header() {
             <LogoLink size="md" className="max-w-[140px] sm:max-w-[180px]" />
 
             <nav className="hidden items-center gap-0.5 rounded-full border border-border/80 bg-stone-50/80 p-1 lg:flex">
-              {navLinks.map((link) =>
-                link.explore ? (
-                  <button
-                    key={link.label}
-                    type="button"
-                    onClick={() => openExplore(link.explore)}
-                    className="rounded-full px-3.5 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-brand-dark hover:shadow-sm"
-                  >
-                    {link.label}
-                  </button>
-                ) : (
+              {navLinks.map((link) => {
+                const isActive =
+                  link.href &&
+                  (link.href === "/"
+                    ? pathname === "/"
+                    : pathname === link.href || pathname.startsWith(`${link.href}/`));
+
+                if (link.explore) {
+                  return (
+                    <button
+                      key={link.label}
+                      type="button"
+                      onClick={() => openExplore(link.explore)}
+                      className="rounded-full px-3.5 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-brand-dark hover:shadow-sm"
+                    >
+                      {link.label}
+                    </button>
+                  );
+                }
+
+                return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="rounded-full px-3.5 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-brand-dark hover:shadow-sm"
+                    className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
+                      isActive
+                        ? "bg-white text-brand-dark shadow-sm"
+                        : "text-stone-600 hover:bg-white hover:text-brand-dark hover:shadow-sm"
+                    }`}
                   >
                     {link.label}
                   </Link>
-                )
-              )}
+                );
+              })}
             </nav>
 
             <HeaderActions />
