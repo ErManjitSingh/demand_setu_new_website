@@ -3,15 +3,19 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCategoryExplore } from "@/hooks/useCategoryExplore";
+import { isListingsSlugPath } from "@/lib/listingsSlug";
 
 const tabs = [
   { href: "/", label: "Home", explore: null, match: (p) => p === "/" },
-  { href: "/stays", label: "Stays", explore: null, match: (p) => p === "/stays" },
+  { href: "/accommodations", label: "Stays", explore: null, match: (p) => p === "/accommodations" },
   {
     href: "/listings",
     label: "Explore",
     explore: "all",
-    match: (p, q) => p === "/listings" && !q.get("category") && !q.get("city") && !q.get("state"),
+    match: (p, q) =>
+      p === "/listings" ||
+      p === "/explore" ||
+      (isListingsSlugPath(p) && !q.get("category")),
   },
   {
     href: null,

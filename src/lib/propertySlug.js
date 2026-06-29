@@ -2,7 +2,7 @@ import { parseHotelIdFromSlug } from "@/lib/hotelListingsApi";
 import { CATEGORY_TO_SEGMENT, toLocationSlug } from "@/lib/listingsSlug";
 
 const PROPERTY_PATH_RE =
-  /^\/(stays|hotels|hotel|airbnb|homestay|villa|villas)\/([^/]+)\/([^/]+)(?:\/book)?$/;
+  /^\/(explore|stays|hotels|hotel|airbnb|homestay|villa|villas)\/([^/]+)\/([^/]+)(?:\/book)?$/;
 
 export function buildPropertySegment(listing) {
   const hotelId =

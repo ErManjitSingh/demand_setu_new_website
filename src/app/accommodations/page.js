@@ -21,7 +21,7 @@ export const metadata = {
     "Book curated hotels, Airbnbs, homestays and private villas across India with Demand Setu.",
 };
 
-export default async function StaysPage() {
+export default async function AccommodationsPage() {
   const apiListings = await fetchHomePageHotels();
   const listings = apiListings.length > 0 ? apiListings : LISTINGS;
   const {

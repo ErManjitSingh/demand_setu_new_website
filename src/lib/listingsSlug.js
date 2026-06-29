@@ -1,6 +1,7 @@
 /** Listings + property slug paths. */
 
 export const SEGMENT_TO_CATEGORY = {
+  explore: "all",
   stays: "all",
   hotel: "hotel",
   hotels: "hotel",
@@ -11,14 +12,14 @@ export const SEGMENT_TO_CATEGORY = {
 };
 
 export const CATEGORY_TO_SEGMENT = {
-  all: "stays",
+  all: "explore",
   hotel: "hotels",
   airbnb: "airbnb",
   homestay: "villas",
 };
 
 const LISTINGS_PATH_RE =
-  /^\/(stays|hotels|hotel|airbnb|homestay|villa|villas)(?:\/([^/]+))?$/;
+  /^\/(explore|stays|hotels|hotel|airbnb|homestay|villa|villas)(?:\/([^/]+))?$/;
 
 export function toLocationSlug(name) {
   return String(name || "")

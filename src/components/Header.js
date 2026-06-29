@@ -16,7 +16,7 @@ import { useGuestAuth } from "@/hooks/useGuestAuth";
 
 const navLinks = [
   { href: "/", label: "Home", explore: null },
-  { href: "/stays", label: "Stays", explore: null },
+  { href: "/accommodations", label: "Stays", explore: null },
   { href: "/listings", label: "Explore", explore: "all" },
   { href: null, label: "Hotels", explore: "hotel" },
   { href: null, label: "Airbnb", explore: "airbnb" },
