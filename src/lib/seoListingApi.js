@@ -1,5 +1,4 @@
 import { cache } from "react";
-import DOMPurify from "isomorphic-dompurify";
 import { buildApiUrl } from "@/lib/apiConfig";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import { inferLocationType } from "@/lib/logSearchSelection";
@@ -25,6 +24,11 @@ const SEO_HTML_SANITIZE_OPTIONS = {
   ],
   ALLOWED_ATTR: ["href", "title", "class", "target", "rel"],
 };
+
+const BLOCKED_TAG_RE =
+  /<\s*(script|iframe|object|embed|form|input|button|style|link|meta)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi;
+const VOID_BLOCKED_TAG_RE =
+  /<\s*(script|iframe|object|embed|form|input|button|style|link|meta)[^>]*\/?>/gi;
 
 /** Build `/api/seo-listing/:category/:locationType/:stateOrCity` from listings search. */
 export function buildSeoListingApiPath({ category, city = "", state = "", locationKind = null }) {
@@ -119,11 +123,44 @@ export function prepareSeoHtml(html) {
   return value;
 }
 
-/** Prepare CMS HTML and strip unsafe tags/attributes before client render. */
+/** Strip unsafe markup without jsdom (serverless-safe on Vercel). */
 export function sanitizeSeoHtml(html) {
   const prepared = prepareSeoHtml(html);
   if (!prepared) return "";
-  return DOMPurify.sanitize(prepared, SEO_HTML_SANITIZE_OPTIONS);
+
+  const allowedTags = new Set(
+    SEO_HTML_SANITIZE_OPTIONS.ALLOWED_TAGS.map((tag) => tag.toLowerCase())
+  );
+  const allowedAttrs = new Set(
+    SEO_HTML_SANITIZE_OPTIONS.ALLOWED_ATTR.map((attr) => attr.toLowerCase())
+  );
+
+  let value = prepared
+    .replace(BLOCKED_TAG_RE, "")
+    .replace(VOID_BLOCKED_TAG_RE, "")
+    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/href\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*')/gi, 'href="#"');
+
+  value = value.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (match, tagName) => {
+    const tag = String(tagName || "").toLowerCase();
+    if (!allowedTags.has(tag)) return "";
+    if (match.startsWith("</")) return `</${tag}>`;
+
+    const attrs = [];
+    const attrPattern = /([a-z][a-z0-9-]*)\s*=\s*("([^"]*)"|'([^']*)')/gi;
+    let attrMatch;
+    while ((attrMatch = attrPattern.exec(match)) !== null) {
+      const name = attrMatch[1].toLowerCase();
+      if (!allowedAttrs.has(name)) continue;
+      const rawValue = attrMatch[3] ?? attrMatch[4] ?? "";
+      const safeValue = name === "href" && /^javascript:/i.test(rawValue) ? "#" : rawValue;
+      attrs.push(`${name}="${safeValue}"`);
+    }
+
+    return attrs.length > 0 ? `<${tag} ${attrs.join(" ")}>` : `<${tag}>`;
+  });
+
+  return value;
 }
 
 export function seoTagsFromRecord(seo) {
