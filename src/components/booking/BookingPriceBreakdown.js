@@ -1,4 +1,5 @@
 import { formatPrice } from "@/lib/listings";
+import { formatGstSummaryLabel } from "@/lib/bookingPricing";
 
 function LineItemPricing({ item, nights }) {
   const stayNights = item.nights || nights;
@@ -39,11 +40,13 @@ function PriceTotals({
   subtotal,
   gst,
   total,
+  nights,
   totalBase,
   totalExtraAdult,
   compact = false,
   showBaseRate = false,
 }) {
+  const gstLabel = formatGstSummaryLabel({ subtotal, gst, nights });
   return (
     <div className={`space-y-1.5 ${compact ? "text-xs" : "text-xs sm:text-sm"}`}>
       {showBaseRate ? (
@@ -69,7 +72,7 @@ function PriceTotals({
         <span className="shrink-0 font-semibold text-[#1a1a1a]">{formatPrice(subtotal)}</span>
       </p>
       <p className="flex justify-between gap-3 text-[#4a4a4a]">
-        <span>GST (5%)</span>
+        <span>{gstLabel}</span>
         <span className="shrink-0 font-semibold text-[#1a1a1a]">{formatPrice(gst)}</span>
       </p>
       <p className="flex justify-between gap-3 border-t border-[#efefef] pt-2 font-bold text-[#1a1a1a]">
@@ -90,6 +93,7 @@ export default function BookingPriceBreakdown({
   scrollable = true,
   summaryOnly = false,
 }) {
+  const gstLabel = formatGstSummaryLabel({ subtotal, gst, nights });
   const totalExtraAdult = lineItems.reduce(
     (sum, item) => sum + (item.extraAdultSubtotal ?? 0),
     0
@@ -107,7 +111,7 @@ export default function BookingPriceBreakdown({
           <span className="shrink-0 font-semibold text-[#1a1a1a]">{formatPrice(subtotal)}</span>
         </p>
         <p className="flex justify-between gap-3 text-[#4a4a4a]">
-          <span>GST (5%)</span>
+          <span>{gstLabel}</span>
           <span className="shrink-0 font-semibold text-[#1a1a1a]">{formatPrice(gst)}</span>
         </p>
         <p className="flex justify-between gap-3 border-t border-[#efefef] pt-2 font-bold text-[#1a1a1a]">
@@ -124,6 +128,7 @@ export default function BookingPriceBreakdown({
         subtotal={subtotal}
         gst={gst}
         total={total}
+        nights={nights}
         totalBase={totalBase}
         totalExtraAdult={totalExtraAdult}
         compact={compact}
@@ -199,7 +204,7 @@ export default function BookingPriceBreakdown({
           <span className="shrink-0 font-semibold text-[#1a1a1a]">{formatPrice(subtotal)}</span>
         </p>
         <p className="flex justify-between gap-3 text-[#4a4a4a]">
-          <span>GST (5%)</span>
+          <span>{gstLabel}</span>
           <span className="shrink-0 font-semibold text-[#1a1a1a]">{formatPrice(gst)}</span>
         </p>
         <p className="flex justify-between gap-3 pt-1 font-bold text-[#1a1a1a]">

@@ -88,6 +88,6 @@ export function buildCheckoutApiPayload({
       mobile: guest.mobile || "",
       password: guest.password || "",
     },
-    totalamountwith25: getBaseTotalWithGst(subtotal),
+    totalamountwith25: getBaseTotalWithGst(subtotal, { nights }),
   };
 }

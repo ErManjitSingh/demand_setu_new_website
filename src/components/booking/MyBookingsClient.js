@@ -8,8 +8,11 @@ import { buildPropertyUrl } from "@/lib/bookingSearch";
 import { formatBookingDate } from "@/lib/dates";
 import { useGuestAuth } from "@/hooks/useGuestAuth";
 import {
+  cancelInventoryBooking,
+  canCustomerCancelBooking,
   getBookingsByMobile,
   getGuestProfileFromSession,
+  isBookingCancellationRequested,
 } from "@/lib/inventoryBookingApi";
 import {
   mergeBookingForEmail,
@@ -59,14 +62,32 @@ function getGuestsLabel(guests) {
   return `${adults} adult${adults !== 1 ? "s" : ""}${childPart} · ${rooms} room${rooms !== 1 ? "s" : ""}`;
 }
 
-function BookingCard({ booking, onPayNow, paying, payError }) {
+function formatCustomerResponseLabel(status) {
+  const value = String(status || "").toLowerCase();
+  if (value === "cancel") return "Cancelled";
+  if (value === "accepted") return "Accepted";
+  return formatStatusLabel(status);
+}
+
+function getCustomerResponseBadgeClass(status) {
+  const value = String(status || "").toLowerCase();
+  if (value === "cancel") return "bg-red-100 text-red-800";
+  if (value === "accepted") return "bg-emerald-100 text-emerald-800";
+  return "bg-stone-100 text-stone-700";
+}
+
+function BookingCard({ booking, onPayNow, paying, payError, onCancelRequest }) {
   const checkInDate = parseApiDate(booking.stay?.checkIn);
   const checkOutDate = parseApiDate(booking.stay?.checkOut);
   const property = booking.property || {};
   const total = booking.pricing?.payableTotal ?? booking.pricing?.total ?? 0;
   const amountPaid = Number(booking.amountPaid) || 0;
   const amountDue = getBookingAmountDue(booking);
-  const showPayNow = canPayBookingOnline(booking) && amountDue > 0;
+  const cancellationRequested = isBookingCancellationRequested(booking);
+  const showPayNow =
+    canPayBookingOnline(booking) && amountDue > 0 && !cancellationRequested;
+  const showCancel = canCustomerCancelBooking(booking);
+  const customerResponse = booking.customerResponse || {};
   const bookingRef = String(booking._id || "").slice(-8).toUpperCase();
   const isPartial = String(booking.payment || "").toLowerCase() === "partially_paid";
 
@@ -96,6 +117,13 @@ function BookingCard({ booking, onPayNow, paying, payError }) {
             >
              {formatStatusLabel(booking.payment)}
             </span>
+            {customerResponse.status ? (
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${getCustomerResponseBadgeClass(customerResponse.status)}`}
+              >
+                {formatCustomerResponseLabel(customerResponse.status)}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
@@ -235,23 +263,105 @@ function BookingCard({ booking, onPayNow, paying, payError }) {
           </div>
         ) : null}
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-4 text-xs text-muted">
-          <span>
-            Booked on{" "}
-            {booking.createdAt
-              ? new Date(booking.createdAt).toLocaleDateString("en-IN", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })
-              : "—"}
-          </span>
-          <span className="font-semibold text-foreground">
-            {booking.bookingType === "inventory" ? "Inventory booking" : "Standard booking"}
-          </span>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-4">
+          <div className="text-xs text-muted">
+            <span>
+              Booked on{" "}
+              {booking.createdAt
+                ? new Date(booking.createdAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—"}
+            </span>
+            <span className="mx-2">·</span>
+            <span className="font-semibold text-foreground">
+              {booking.bookingType === "inventory" ? "Inventory booking" : "Standard booking"}
+            </span>
+          </div>
+          {showCancel ? (
+            <button
+              type="button"
+              onClick={() => onCancelRequest(booking)}
+              className="rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-bold text-red-700 transition hover:border-red-300 hover:bg-red-50"
+            >
+              Cancel booking
+            </button>
+          ) : null}
         </div>
       </div>
     </article>
+  );
+}
+
+function CancelBookingDialog({
+  booking,
+  note,
+  onNoteChange,
+  onClose,
+  onConfirm,
+  loading,
+  error,
+}) {
+  if (!booking) return null;
+
+  const propertyTitle = booking.property?.title || "this booking";
+  const bookingRef = String(booking._id || "").slice(-8).toUpperCase();
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cancel-booking-title"
+    >
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl sm:p-6">
+        <h2 id="cancel-booking-title" className="text-lg font-extrabold text-foreground">
+          Cancel booking?
+        </h2>
+        <p className="mt-2 text-sm text-muted">
+          You are about to request cancellation for{" "}
+          <span className="font-semibold text-foreground">{propertyTitle}</span> (#
+          {bookingRef}).
+        </p>
+        <label className="mt-4 block">
+          <span className="text-xs font-bold uppercase tracking-wide text-muted">
+            Reason (optional)
+          </span>
+          <textarea
+            value={note}
+            onChange={(event) => onNoteChange(event.target.value)}
+            rows={3}
+            placeholder="Tell us why you want to cancel..."
+            className="mt-2 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm text-foreground outline-none ring-brand/30 focus:border-brand focus:ring-2"
+          />
+        </label>
+        {error ? (
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+            {error}
+          </p>
+        ) : null}
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onClose}
+            className="rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold text-foreground hover:bg-stone-50 disabled:opacity-70"
+          >
+            Keep booking
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onConfirm}
+            className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-70"
+          >
+            {loading ? "Submitting…" : "Confirm cancellation"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -263,6 +373,10 @@ export default function MyBookingsClient() {
   const [error, setError] = useState("");
   const [payingId, setPayingId] = useState(null);
   const [payErrorById, setPayErrorById] = useState({});
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelNote, setCancelNote] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   const profile = getGuestProfileFromSession(session);
   const guestName = profile?.fullName || "Guest";
@@ -347,6 +461,37 @@ export default function MyBookingsClient() {
     }
   };
 
+  const handleCancelRequest = (booking) => {
+    setCancelTarget(booking);
+    setCancelNote("");
+    setCancelError("");
+  };
+
+  const handleCloseCancelDialog = () => {
+    if (cancelling) return;
+    setCancelTarget(null);
+    setCancelNote("");
+    setCancelError("");
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget?._id) return;
+
+    setCancelling(true);
+    setCancelError("");
+
+    try {
+      await cancelInventoryBooking(cancelTarget._id, cancelNote);
+      setCancelTarget(null);
+      setCancelNote("");
+      await loadBookings();
+    } catch (err) {
+      setCancelError(err?.message || "Could not cancel booking. Please try again.");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   if (!ready || !isLoggedIn) {
     return (
       <div className="min-h-screen bg-stone-100">
@@ -425,10 +570,21 @@ export default function MyBookingsClient() {
                 onPayNow={handlePayNow}
                 paying={payingId === booking._id}
                 payError={payErrorById[booking._id]}
+                onCancelRequest={handleCancelRequest}
               />
             ))}
           </div>
         )}
+
+        <CancelBookingDialog
+          booking={cancelTarget}
+          note={cancelNote}
+          onNoteChange={setCancelNote}
+          onClose={handleCloseCancelDialog}
+          onConfirm={handleConfirmCancel}
+          loading={cancelling}
+          error={cancelError}
+        />
 
         <p className="mt-8 text-center text-xs text-muted">
           Need help?{" "}

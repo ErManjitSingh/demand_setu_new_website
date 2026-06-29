@@ -14,7 +14,7 @@ import {
   nightsBetween,
   toDateParam,
 } from "@/lib/dates";
-import { calculateBookingPrice } from "@/lib/bookingPricing";
+import { calculateBookingPrice, formatGstSummaryLabel } from "@/lib/bookingPricing";
 import { buildPropertyUrl, normalizeGuests } from "@/lib/bookingSearch";
 import { serializeChildAgesParam } from "@/lib/guestOccupancy";
 import { useGuestAuth } from "@/hooks/useGuestAuth";
@@ -686,7 +686,10 @@ function BookingCheckoutFormClient({
                 label={`${formatPrice(nightly)} × ${nights} nights`}
                 value={formatPrice(subtotal)}
               />
-              <PriceRow label="GST (5%)" value={formatPrice(gst)} />
+              <PriceRow
+                label={formatGstSummaryLabel({ subtotal, gst, nights })}
+                value={formatPrice(gst)}
+              />
             </ul>
           )}
 
@@ -696,7 +699,7 @@ function BookingCheckoutFormClient({
               {formatPrice(total)}
             </span>
           </div>
-          <p className="mt-2 text-[11px] text-muted">Includes 5% GST · INR</p>
+          <p className="mt-2 text-[11px] text-muted">Includes GST as applicable · INR</p>
         </div>
       </aside>
     </div>

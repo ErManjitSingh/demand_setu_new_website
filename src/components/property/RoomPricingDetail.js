@@ -1,4 +1,5 @@
 import { formatPrice } from "@/lib/listings";
+import { formatGstSummaryLabel } from "@/lib/bookingPricing";
 
 export default function RoomPricingDetail({
   pricing,
@@ -45,7 +46,7 @@ export default function RoomPricingDetail({
       </p> */}
 
       <p className="flex justify-between gap-3 text-[#4a4a4a]">
-        <span>GST (5%)</span>
+        <span>{formatGstSummaryLabel({ subtotal: pricing.subtotal, gst: pricing.gst, nights: stayNights })}</span>
         <span className="shrink-0 font-semibold text-[#1a1a1a]">{formatPrice(pricing.gst)}</span>
       </p>
 

@@ -1,5 +1,6 @@
 import { buildApiUrl } from "@/lib/apiConfig";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+import { formatGstSummaryLabel } from "@/lib/bookingPricing";
 
 function formatInr(amount) {
   const value = Number(amount) || 0;
@@ -209,6 +210,11 @@ export function buildBookingConfirmationEmailHtml(booking) {
   });
   const myBookingsLoginHtml = buildMyBookingsLoginHtml(guest);
   const guestPassword = String(guest?.password || "").trim();
+  const gstLabel = formatGstSummaryLabel({
+    subtotal: pricing?.subtotal,
+    gst: pricing?.gst,
+    nights: stay?.nights,
+  });
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -325,7 +331,7 @@ export function buildBookingConfirmationEmailHtml(booking) {
                         <td align="right" style="padding:4px 0;font-size:14px;color:#ffffff;">${formatInr(pricing?.subtotal)}</td>
                       </tr>
                       <tr>
-                        <td style="padding:4px 0;font-size:14px;color:#d6d3d1;">GST (5%)</td>
+                        <td style="padding:4px 0;font-size:14px;color:#d6d3d1;">${gstLabel}</td>
                         <td align="right" style="padding:4px 0;font-size:14px;color:#ffffff;">${formatInr(pricing?.gst)}</td>
                       </tr>
                       <tr>

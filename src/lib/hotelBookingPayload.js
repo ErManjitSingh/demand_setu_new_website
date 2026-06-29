@@ -188,7 +188,10 @@ export function buildHotelBookingCreatePayload({
     numberOfRooms: totalRooms,
     propertyName,
     totalAmount: Number(pricing.payableTotal ?? pricing.total ?? 0),
-    totalamountwith25: getBaseTotalWithGst(Number(pricing.subtotal ?? 0)),
+    totalamountwith25: getBaseTotalWithGst(Number(pricing.subtotal ?? 0), {
+      nights,
+      nightlyTariff: lineItems.length ? null : nightly,
+    }),
     bookingresponse: "pending",
   };
 }

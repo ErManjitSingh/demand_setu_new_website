@@ -9,7 +9,7 @@ import { formatShortDate, getDefaultBookingDates, nightsBetween } from "@/lib/da
 import { useTripSearch } from "@/hooks/useTripSearch";
 import { usePropertyRoomSelection } from "@/contexts/PropertyRoomSelectionContext";
 import { buildBookUrl, normalizeGuests, persistTripSearch } from "@/lib/bookingSearch";
-import { calculateBookingPrice } from "@/lib/bookingPricing";
+import { calculateBookingPrice, formatGstSummaryLabel } from "@/lib/bookingPricing";
 import {
   hasActiveRoomSelection,
   saveAndNavigateToBooking,
@@ -185,7 +185,7 @@ function PropertyBookingCardClient({
             <span className="font-semibold text-[#1a1a1a]">{formatPrice(pricing.subtotal)}</span>
           </p>
           <p className="mt-1 flex justify-between">
-            <span>GST (5%)</span>
+            <span>{formatGstSummaryLabel({ subtotal: pricing.subtotal, gst: pricing.gst, nights })}</span>
             <span className="font-semibold text-[#1a1a1a]">{formatPrice(pricing.gst)}</span>
           </p>
         </div>

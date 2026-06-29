@@ -1,8 +1,8 @@
 import { addDays, startOfDay, toDateParam } from "@/lib/dates";
 import {
-  GST_RATE,
   applyPropertyPriceMarkup,
   applyPropertyPricingMarkup,
+  calculateGstFromNightlyAmounts,
 } from "@/lib/bookingPricing";
 import { MEAL_PLAN_DEFS } from "@/lib/property";
 import {
@@ -276,6 +276,27 @@ export function formatGuestDistributionLabel(roomDetails) {
     .join(" · ");
 }
 
+function accumulateRoomNightAmounts(categoryData, mealPlan, nightDates, effectiveAdults) {
+  let roomBase = 0;
+  let roomExtra = 0;
+  const nightCharges = [];
+
+  for (const night of nightDates) {
+    const breakdown = calculateRoomNightPriceBreakdown(
+      categoryData.rates,
+      mealPlan,
+      night,
+      effectiveAdults
+    );
+    if (!breakdown) return null;
+    roomBase += breakdown.base;
+    roomExtra += breakdown.extraAdult;
+    nightCharges.push(breakdown.base + breakdown.extraAdult);
+  }
+
+  return { roomBase, roomExtra, nightCharges };
+}
+
 export function calculateRoomsStayPricingWithOccupancies(
   categoryData,
   mealPlan,
@@ -287,42 +308,37 @@ export function calculateRoomsStayPricingWithOccupancies(
   let baseSubtotal = 0;
   let extraAdultSubtotal = 0;
   const roomDetails = [];
+  const nightCharges = [];
 
   for (let index = 0; index < occupancies.length; index++) {
     const occupancy = occupancies[index];
     const effectiveAdults = Math.max(1, Number(occupancy.effectiveAdults) || 2);
     const youngChildren = Math.max(0, Number(occupancy.youngChildren) || 0);
-    let roomBase = 0;
-    let roomExtra = 0;
+    const amounts = accumulateRoomNightAmounts(
+      categoryData,
+      mealPlan,
+      nightDates,
+      effectiveAdults
+    );
+    if (!amounts) return null;
 
-    for (const night of nightDates) {
-      const breakdown = calculateRoomNightPriceBreakdown(
-        categoryData.rates,
-        mealPlan,
-        night,
-        effectiveAdults
-      );
-      if (!breakdown) return null;
-      roomBase += breakdown.base;
-      roomExtra += breakdown.extraAdult;
-    }
-
-    baseSubtotal += roomBase;
-    extraAdultSubtotal += roomExtra;
+    baseSubtotal += amounts.roomBase;
+    extraAdultSubtotal += amounts.roomExtra;
+    nightCharges.push(...amounts.nightCharges);
     roomDetails.push({
       roomIndex: index + 1,
       effectiveAdults,
       youngChildren,
-      baseSubtotal: roomBase,
-      extraAdultSubtotal: roomExtra,
-      subtotal: roomBase + roomExtra,
+      baseSubtotal: amounts.roomBase,
+      extraAdultSubtotal: amounts.roomExtra,
+      subtotal: amounts.roomBase + amounts.roomExtra,
     });
   }
 
   if (!roomDetails.length) return null;
 
   const subtotal = baseSubtotal + extraAdultSubtotal;
-  const gst = Math.round(subtotal * GST_RATE);
+  const gst = calculateGstFromNightlyAmounts(nightCharges);
 
   return applyPropertyPricingMarkup({
     subtotal,
@@ -333,6 +349,7 @@ export function calculateRoomsStayPricingWithOccupancies(
     nights: nightDates.length,
     roomCount: roomDetails.length,
     roomDetails,
+    nightCharges,
     occupancyLabel: formatGuestDistributionLabel(roomDetails),
   });
 }
@@ -354,39 +371,34 @@ export function calculateRoomsStayPricing(
   let baseSubtotal = 0;
   let extraAdultSubtotal = 0;
   const roomDetails = [];
+  const nightCharges = [];
 
   for (let i = 0; i < roomCount; i++) {
     const roomIndex = startRoomIndex + i;
     const occupancy = distribution[roomIndex] || { effectiveAdults: 2, youngChildren: 0 };
-    let roomBase = 0;
-    let roomExtra = 0;
+    const amounts = accumulateRoomNightAmounts(
+      categoryData,
+      mealPlan,
+      nightDates,
+      occupancy.effectiveAdults
+    );
+    if (!amounts) return null;
 
-    for (const night of nightDates) {
-      const breakdown = calculateRoomNightPriceBreakdown(
-        categoryData.rates,
-        mealPlan,
-        night,
-        occupancy.effectiveAdults
-      );
-      if (!breakdown) return null;
-      roomBase += breakdown.base;
-      roomExtra += breakdown.extraAdult;
-    }
-
-    baseSubtotal += roomBase;
-    extraAdultSubtotal += roomExtra;
+    baseSubtotal += amounts.roomBase;
+    extraAdultSubtotal += amounts.roomExtra;
+    nightCharges.push(...amounts.nightCharges);
     roomDetails.push({
       roomIndex: roomIndex + 1,
       effectiveAdults: occupancy.effectiveAdults,
       youngChildren: occupancy.youngChildren,
-      baseSubtotal: roomBase,
-      extraAdultSubtotal: roomExtra,
-      subtotal: roomBase + roomExtra,
+      baseSubtotal: amounts.roomBase,
+      extraAdultSubtotal: amounts.roomExtra,
+      subtotal: amounts.roomBase + amounts.roomExtra,
     });
   }
 
   const subtotal = baseSubtotal + extraAdultSubtotal;
-  const gst = Math.round(subtotal * GST_RATE);
+  const gst = calculateGstFromNightlyAmounts(nightCharges);
 
   return applyPropertyPricingMarkup({
     subtotal,
@@ -397,6 +409,7 @@ export function calculateRoomsStayPricing(
     nights: nightDates.length,
     roomCount,
     roomDetails,
+    nightCharges,
     occupancyLabel: formatGuestDistributionLabel(roomDetails),
     searchRoomCount: getSearchRoomCount(guests),
   });
@@ -617,6 +630,7 @@ export function calculateComboPricingPreview(allocations, mealPlan, nightDates, 
   let subtotal = 0;
   let baseSubtotal = 0;
   let extraAdultSubtotal = 0;
+  let gst = 0;
   const parts = [];
 
   for (const alloc of allocations || []) {
@@ -632,6 +646,7 @@ export function calculateComboPricingPreview(allocations, mealPlan, nightDates, 
     subtotal += pricing.subtotal;
     baseSubtotal += pricing.baseSubtotal;
     extraAdultSubtotal += pricing.extraAdultSubtotal;
+    gst += pricing.gst;
     parts.push({
       categoryLabel: alloc.categoryLabel,
       roomCount: alloc.roomCount,
@@ -643,7 +658,6 @@ export function calculateComboPricingPreview(allocations, mealPlan, nightDates, 
     startOffset += alloc.roomCount;
   }
 
-  const gst = Math.round(subtotal * GST_RATE);
   return {
     subtotal,
     baseSubtotal,
@@ -952,7 +966,7 @@ export function calculateSelectionGrandTotal(
     customRoomSlots
   );
   const subtotal = lineItems.reduce((sum, item) => sum + item.subtotal, 0);
-  const gst = Math.round(subtotal * GST_RATE);
+  const gst = lineItems.reduce((sum, item) => sum + (Number(item.gst) || 0), 0);
   return {
     subtotal,
     gst,

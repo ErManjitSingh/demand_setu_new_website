@@ -10,11 +10,11 @@ function notifyAuthChange() {
   window.dispatchEvent(new CustomEvent(AUTH_CHANGE_EVENT));
 }
 
-async function postJson(path, body) {
+async function requestJson(method, path, body) {
   const response = await fetchWithTimeout(buildApiUrl(path), {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
 
   const payload = await response.json().catch(() => ({}));
@@ -29,6 +29,10 @@ async function postJson(path, body) {
   }
 
   return payload;
+}
+
+async function postJson(path, body) {
+  return requestJson("POST", path, body);
 }
 
 export async function createInventoryBooking(bookingData) {
@@ -68,6 +72,36 @@ export async function getBookingsByMobile(mobile) {
   }
 
   return payload;
+}
+
+export function isBookingCancellationRequested(booking) {
+  return String(booking?.customerResponse?.status || "").toLowerCase() === "cancel";
+}
+
+export function canCustomerCancelBooking(booking) {
+  return Boolean(booking?._id) && !isBookingCancellationRequested(booking);
+}
+
+export async function updateInventoryBooking(bookingId, body) {
+  const id = String(bookingId || "").trim();
+  if (!id) {
+    throw new Error("Booking id is required");
+  }
+
+  return requestJson(
+    "PUT",
+    `api/inventorybooking/update/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+export async function cancelInventoryBooking(bookingId, note = "") {
+  return updateInventoryBooking(bookingId, {
+    customerResponse: {
+      status: "cancel",
+      note: String(note || "").trim(),
+    },
+  });
 }
 
 export function getGuestProfileFromSession(session) {
