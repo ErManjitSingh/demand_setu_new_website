@@ -193,5 +193,6 @@ export function buildHotelBookingCreatePayload({
       nightlyTariff: lineItems.length ? null : nightly,
     }),
     bookingresponse: "pending",
+    websiteid: submitPayload.websiteid || "",
   };
 }

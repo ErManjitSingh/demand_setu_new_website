@@ -2,6 +2,14 @@ import { toDateParam } from "@/lib/dates";
 import { getBaseTotalWithGst } from "@/lib/bookingPricing";
 import { parseHotelIdFromSlug } from "@/lib/hotelListingsApi";
 
+/** Shared id sent to inventory + hotel booking create APIs for the same checkout. */
+export function generateWebsiteBookingId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `WEB-${crypto.randomUUID()}`;
+  }
+  return `WEB-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 function mapLineItemForApi(item) {
   return {
     roomId: item.roomId,
@@ -42,6 +50,7 @@ export function buildCheckoutApiPayload({
   total,
   nightly,
   guest = {},
+  websiteid = "",
 }) {
   const hotelId = listing.hotelId || parseHotelIdFromSlug(listing.slug) || null;
 
@@ -89,5 +98,6 @@ export function buildCheckoutApiPayload({
       password: guest.password || "",
     },
     totalamountwith25: getBaseTotalWithGst(subtotal, { nights }),
+    websiteid: websiteid || "",
   };
 }

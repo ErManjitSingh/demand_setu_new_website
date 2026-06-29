@@ -18,7 +18,7 @@ import { calculateBookingPrice, formatGstSummaryLabel } from "@/lib/bookingPrici
 import { buildPropertyUrl, normalizeGuests } from "@/lib/bookingSearch";
 import { serializeChildAgesParam } from "@/lib/guestOccupancy";
 import { useGuestAuth } from "@/hooks/useGuestAuth";
-import { buildCheckoutApiPayload } from "@/lib/checkoutPayload";
+import { buildCheckoutApiPayload, generateWebsiteBookingId } from "@/lib/checkoutPayload";
 import { createHotelBooking } from "@/lib/hotelBookingApi";
 import { buildHotelBookingCreatePayload } from "@/lib/hotelBookingPayload";
 import {
@@ -185,7 +185,7 @@ function BookingCheckoutFormClient({
     }
   }, [isGuestFormEmpty, isLoggedIn]);
 
-  const buildApiPayload = (guestOverrides = {}) =>
+  const buildApiPayload = (guestOverrides = {}, websiteid = "") =>
     buildCheckoutApiPayload({
       listing,
       checkIn,
@@ -199,6 +199,7 @@ function BookingCheckoutFormClient({
       gst,
       total,
       nightly,
+      websiteid,
       guest: {
         firstName,
         lastName,
@@ -244,7 +245,8 @@ function BookingCheckoutFormClient({
       return;
     }
 
-    const submitPayload = buildApiPayload();
+    const websiteid = generateWebsiteBookingId();
+    const submitPayload = buildApiPayload({}, websiteid);
 
     setBookError("");
     setLoading(true);
