@@ -1,4 +1,5 @@
 import { toDateParam } from "@/lib/dates";
+import { getBaseTotalWithGst } from "@/lib/bookingPricing";
 import { parseHotelIdFromSlug } from "@/lib/hotelListingsApi";
 
 function mapLineItemForApi(item) {
@@ -87,5 +88,6 @@ export function buildCheckoutApiPayload({
       mobile: guest.mobile || "",
       password: guest.password || "",
     },
+    totalamountwith25: getBaseTotalWithGst(subtotal),
   };
 }

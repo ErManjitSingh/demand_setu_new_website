@@ -1,5 +1,9 @@
 import { addDays, startOfDay, toDateParam } from "@/lib/dates";
-import { GST_RATE } from "@/lib/bookingPricing";
+import {
+  GST_RATE,
+  applyPropertyPriceMarkup,
+  applyPropertyPricingMarkup,
+} from "@/lib/bookingPricing";
 import { MEAL_PLAN_DEFS } from "@/lib/property";
 import {
   countYoungChildren,
@@ -320,7 +324,7 @@ export function calculateRoomsStayPricingWithOccupancies(
   const subtotal = baseSubtotal + extraAdultSubtotal;
   const gst = Math.round(subtotal * GST_RATE);
 
-  return {
+  return applyPropertyPricingMarkup({
     subtotal,
     baseSubtotal,
     extraAdultSubtotal,
@@ -330,7 +334,7 @@ export function calculateRoomsStayPricingWithOccupancies(
     roomCount: roomDetails.length,
     roomDetails,
     occupancyLabel: formatGuestDistributionLabel(roomDetails),
-  };
+  });
 }
 
 export function calculateRoomsStayPricing(
@@ -384,7 +388,7 @@ export function calculateRoomsStayPricing(
   const subtotal = baseSubtotal + extraAdultSubtotal;
   const gst = Math.round(subtotal * GST_RATE);
 
-  return {
+  return applyPropertyPricingMarkup({
     subtotal,
     baseSubtotal,
     extraAdultSubtotal,
@@ -395,7 +399,7 @@ export function calculateRoomsStayPricing(
     roomDetails,
     occupancyLabel: formatGuestDistributionLabel(roomDetails),
     searchRoomCount: getSearchRoomCount(guests),
-  };
+  });
 }
 
 export function buildMealPlanOffer(categoryData, mealPlan, nightDates, guests) {
@@ -423,7 +427,7 @@ export function buildMealPlanOffer(categoryData, mealPlan, nightDates, guests) {
     mmtLabel: def.mmtLabel,
     inclusion: def.inclusion,
     inclusionType: def.inclusionType,
-    nightly: nightlyBaseRate,
+    nightly: applyPropertyPriceMarkup(nightlyBaseRate),
     subtotal: pricing.subtotal,
     baseSubtotal: pricing.baseSubtotal,
     extraAdultSubtotal: pricing.extraAdultSubtotal,
@@ -758,7 +762,9 @@ export function getComboOfferForCategory({
     allocations: allocation.allocations,
     allocation,
     pricing,
-    nightly: getAverageBaseRatePerNight(primaryData, mealPlan, nightDates),
+    nightly: applyPropertyPriceMarkup(
+      getAverageBaseRatePerNight(primaryData, mealPlan, nightDates)
+    ),
     targetCount,
     maxSelectable: maxCombo,
     primarySlots,

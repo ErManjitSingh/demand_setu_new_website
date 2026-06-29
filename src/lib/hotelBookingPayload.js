@@ -1,4 +1,5 @@
 import { addDays, nightsBetween, parseDateParam, toDateParam } from "@/lib/dates";
+import { getBaseTotalWithGst } from "@/lib/bookingPricing";
 
 function getCityName(listing = {}) {
   const location = String(listing.location || "").trim();
@@ -187,6 +188,7 @@ export function buildHotelBookingCreatePayload({
     numberOfRooms: totalRooms,
     propertyName,
     totalAmount: Number(pricing.payableTotal ?? pricing.total ?? 0),
+    totalamountwith25: getBaseTotalWithGst(Number(pricing.subtotal ?? 0)),
     bookingresponse: "pending",
   };
 }

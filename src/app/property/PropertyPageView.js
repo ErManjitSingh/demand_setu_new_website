@@ -27,6 +27,24 @@ import {
   getApiPropertyRooms,
 } from "@/lib/propertyFromApi";
 import { attachInventoryToRooms } from "@/lib/propertyInventory";
+import { applyPropertyPriceMarkup } from "@/lib/bookingPricing";
+
+function withPropertyListingPrices(listing) {
+  return {
+    ...listing,
+    price: applyPropertyPriceMarkup(listing.price),
+    originalPrice: listing.originalPrice
+      ? applyPropertyPriceMarkup(listing.originalPrice)
+      : listing.originalPrice,
+  };
+}
+
+function withPropertyRoomPrices(room) {
+  return {
+    ...room,
+    price: applyPropertyPriceMarkup(room.price),
+  };
+}
 
 const RATING_BARS = [
   { label: "Cleanliness", pct: 96 },
@@ -67,9 +85,10 @@ export default async function PropertyPageView({ resolved, searchParams }) {
   const gallery = isApi
     ? getApiPropertyGallery(hotel, listing)
     : getPropertyGallery(listing);
-  const rooms = isApi
+  const rooms = (isApi
     ? attachInventoryToRooms(getApiPropertyRooms(hotel, listing), hotel?.inventory?.b2c)
-    : getPropertyRooms(listing);
+    : getPropertyRooms(listing)
+  ).map(withPropertyRoomPrices);
   const inventoryB2c = isApi ? hotel?.inventory?.b2c || null : null;
   const amenityGroups = isApi
     ? getApiPropertyAmenityGroups(hotel)
@@ -85,7 +104,10 @@ export default async function PropertyPageView({ resolved, searchParams }) {
     (max, room) => Math.max(max, room.guests || 0),
     listing.guests || 2
   );
-  const listingForBooking = { ...listing, guests: maxRoomGuests };
+  const listingForBooking = withPropertyListingPrices({
+    ...listing,
+    guests: maxRoomGuests,
+  });
 
   const similar = isApi
     ? []
