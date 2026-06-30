@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import MobileNav from "@/components/MobileNav";
 import AppProviders from "@/components/providers/AppProviders";
 import NavigationProgress from "@/components/NavigationProgress";
+import { getSiteUrl } from "@/lib/siteConfig";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -14,9 +15,42 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata = {
-  title: "Demand Setu Tours | Tour Packages Across India & The World",
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    default: "Demand Setu Tours | Hotels, Airbnb & Villas",
+    template: "%s | Demand Setu Tours",
+  },
   description:
-    "Tour packages across India and the world — explore states, cities and famous itineraries with Demand Setu.",
+    "Book handpicked hotels, Airbnbs and private villas across India. Verified stays, best prices and 24/7 support with Demand Setu Tours.",
+  keywords: [
+    "hotels India",
+    "Airbnb India",
+    "villas Himachal Pradesh",
+    "Demand Setu Tours",
+    "hotel booking",
+    "homestay",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "en_IN",
+    siteName: "Demand Setu Tours",
+    title: "Demand Setu Tours | Hotels, Airbnb & Villas",
+    description:
+      "Luxury stays and unforgettable journeys — hotels, Airbnbs and villas across India.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: "/",
+  },
 };
 
 export default function RootLayout({ children }) {
