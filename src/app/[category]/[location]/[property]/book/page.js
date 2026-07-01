@@ -1,15 +1,13 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import BookingCheckoutForm from "@/components/booking/BookingCheckoutForm";
 import BookingTripHydrator from "@/components/booking/BookingTripHydrator";
 import {
-  buildBookUrl,
   buildPropertyUrl,
   parseTripFromSearchParams,
   serializeTripForClient,
 } from "@/lib/bookingSearch";
 import { resolvePropertyByRouteParams } from "@/lib/propertyData";
-import { buildPropertySegment } from "@/lib/propertySlug";
 
 export async function generateMetadata({ params }) {
   const routeParams = await params;
@@ -30,12 +28,6 @@ export default async function PropertyBookSlugPage({ params, searchParams }) {
 
   const { listing } = resolved;
   const trip = parseTripFromSearchParams(query);
-  const cleanSegment = buildPropertySegment(listing);
-  if (routeParams.property !== cleanSegment) {
-    const price = query?.price;
-    redirect(buildBookUrl(listing, trip, { price }));
-  }
-
   const initialTrip = serializeTripForClient({
     ...trip,
     category: trip.category !== "all" ? trip.category : listing.category,

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getListingBySlug } from "@/lib/listings";
 import {
   fetchHotelById,
@@ -30,9 +31,13 @@ export async function resolvePropertyBySlug(slug) {
   };
 }
 
-export async function resolvePropertyByRouteParams(routeParams) {
-  const propertySegment = String(routeParams?.property || "").trim();
-  const locationSlug = String(routeParams?.location || "").trim().toLowerCase();
+function findListingMatch(listings, propertySegment) {
+  return (listings || []).find((item) =>
+    propertyNameMatchesSegment(item, propertySegment)
+  );
+}
+
+async function resolvePropertyBySegments(propertySegment, locationSlug) {
   if (!propertySegment) return null;
 
   const parsed = parsePropertySegment(propertySegment);
@@ -48,14 +53,23 @@ export async function resolvePropertyByRouteParams(routeParams) {
   if (!locationSlug) return null;
 
   const location = await resolveLocationFromSlug(locationSlug);
-  const { listings } = await fetchListingsForLocation({
+  const primary = await fetchListingsForLocation({
     city: location.city,
     state: location.state,
   });
 
-  const match = listings.find((item) =>
-    propertyNameMatchesSegment(item, propertySegment)
-  );
+  let match = findListingMatch(primary.listings, propertySegment);
+
+  if (!match && location.state) {
+    const stateWide = await fetchListingsForLocation({ state: location.state });
+    match = findListingMatch(stateWide.listings, propertySegment);
+  }
+
+  if (!match && location.city) {
+    const cityOnly = await fetchListingsForLocation({ city: location.city });
+    match = findListingMatch(cityOnly.listings, propertySegment);
+  }
+
   if (!match) return null;
 
   const hotelId = match.hotelId || parseHotelIdFromSlug(match.slug);
@@ -70,3 +84,9 @@ export async function resolvePropertyByRouteParams(routeParams) {
     source: "api",
   };
 }
+
+export const resolvePropertyByRouteParams = cache(async (routeParams) => {
+  const propertySegment = String(routeParams?.property || "").trim();
+  const locationSlug = String(routeParams?.location || "").trim().toLowerCase();
+  return resolvePropertyBySegments(propertySegment, locationSlug);
+});

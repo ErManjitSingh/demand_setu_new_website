@@ -17,7 +17,26 @@ export function propertyNameMatchesSegment(listing, propertySegment) {
   const segment = String(propertySegment || "").trim().toLowerCase();
   if (!segment) return false;
   if (buildPropertySegment(listing).toLowerCase() === segment) return true;
-  return toLocationSlug(listing?.title).toLowerCase() === segment;
+
+  const titleSlug = toLocationSlug(listing?.title).toLowerCase();
+  if (titleSlug && (titleSlug === segment || segment.startsWith(`${titleSlug}-`))) {
+    return true;
+  }
+
+  const listingHotelId =
+    listing?.hotelId || parseHotelIdFromSlug(listing?.slug || "");
+  if (listingHotelId) {
+    const parsed = parsePropertySegment(propertySegment);
+    if (parsed.hotelId && parsed.hotelId === listingHotelId) return true;
+  }
+
+  const listingSlug = String(listing?.slug || "").trim().toLowerCase();
+  return listingSlug && listingSlug === segment;
+}
+
+/** True when the URL property segment points at the same listing. */
+export function propertyRouteSegmentMatches(routeSegment, listing) {
+  return propertyNameMatchesSegment(listing, routeSegment);
 }
 
 export function parsePropertySegment(segment) {
