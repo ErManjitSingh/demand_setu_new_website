@@ -10,13 +10,34 @@ function formatGuestSummary({ adults, children, rooms }) {
   return parts.join(" · ");
 }
 
+const ENQUIRY_COPY = {
+  bulk: {
+    ariaLabel: "Bulk stay enquiry",
+    title: "Group stay enquiry",
+    subtitle: (requestedRooms) =>
+      `For ${requestedRooms}+ rooms, our team will share the best group rates.`,
+    successFallback: "Our team will share the best group rates shortly.",
+    minRooms: 10,
+  },
+  unavailable: {
+    ariaLabel: "Stay enquiry",
+    title: "Stay enquiry",
+    subtitle: () =>
+      "Room rates aren't available for your selected dates. Share your details and our team will help.",
+    successFallback: "Our team will contact you with availability and rates shortly.",
+    minRooms: 1,
+  },
+};
+
 export default function BulkStayEnquiryForm({
   open,
   onClose,
   guests,
   requestedRooms = 10,
   defaultLocation = "",
+  variant = "bulk",
 }) {
+  const copy = ENQUIRY_COPY[variant] || ENQUIRY_COPY.bulk;
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -97,7 +118,7 @@ export default function BulkStayEnquiryForm({
 
       setSuccessMessage(
         result.message ||
-          "Enquiry submitted successfully! Our team will share the best group rates shortly."
+          `Enquiry submitted successfully! ${copy.successFallback}`
       );
       setSubmitted(true);
     } catch (error) {
@@ -112,7 +133,7 @@ export default function BulkStayEnquiryForm({
       className="fixed inset-0 z-[600] flex items-end justify-center p-0 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Bulk stay enquiry"
+      aria-label={copy.ariaLabel}
     >
       <button
         type="button"
@@ -132,10 +153,8 @@ export default function BulkStayEnquiryForm({
             visible ? "enquiry-header-enter" : "opacity-0"
           }`}
         >
-          <p className="text-lg font-bold text-foreground">Group stay enquiry</p>
-          <p className="mt-1 text-xs text-muted">
-            For {requestedRooms}+ rooms, our team will share the best group rates.
-          </p>
+          <p className="text-lg font-bold text-foreground">{copy.title}</p>
+          <p className="mt-1 text-xs text-muted">{copy.subtitle(requestedRooms)}</p>
           <button
             type="button"
             onClick={onClose}
@@ -154,8 +173,7 @@ export default function BulkStayEnquiryForm({
               </span>
               <p className="mt-4 text-base font-bold text-foreground">Enquiry submitted!</p>
               <p className="mt-2 text-sm text-muted">
-                {successMessage ||
-                  "Our team will share the best group rates shortly."}
+                {successMessage || copy.successFallback}
               </p>
               <button
                 type="button"
@@ -219,7 +237,7 @@ export default function BulkStayEnquiryForm({
                 <input
                   type="number"
                   required
-                  min={10}
+                  min={copy.minRooms}
                   value={form.rooms}
                   onChange={(e) => setForm((f) => ({ ...f, rooms: e.target.value }))}
                   className={inputClass}

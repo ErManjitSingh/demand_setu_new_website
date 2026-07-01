@@ -195,7 +195,7 @@ export default async function PropertyPageView({ resolved, searchParams }) {
 
               {rooms.length > 0 && (
                 <div className="mt-4">
-                  <PropertyRooms rooms={rooms} />
+                  <PropertyRooms rooms={rooms} propertyName={listing.title} />
                 </div>
               )}
 

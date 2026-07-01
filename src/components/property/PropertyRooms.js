@@ -337,18 +337,31 @@ function StaticMealPlanRow({ plan }) {
   );
 }
 
-export default function PropertyRooms({ rooms }) {
+function buildEnquiryDefaultLocation(propertyName, trip) {
+  const place = trip?.city || trip?.state || "";
+  if (propertyName && place) return `${propertyName}, ${place}`;
+  return propertyName || place;
+}
+
+export default function PropertyRooms({ rooms, propertyName = "" }) {
   const selection = usePropertyRoomSelection();
   const [modalState, setModalState] = useState(null);
   const [customizeExpanded, setCustomizeExpanded] = useState(false);
   const [bulkEnquiryOpen, setBulkEnquiryOpen] = useState(false);
+  const [bulkEnquiryVariant, setBulkEnquiryVariant] = useState("bulk");
   const [requestedBulkRooms, setRequestedBulkRooms] = useState(
     MAX_SELF_SERVICE_SEARCH_ROOMS + 1
   );
   const customizeSectionRef = useRef(null);
+  const noMealPlansEnquiryTripRef = useRef(null);
 
-  const openBulkEnquiry = useCallback((roomCount) => {
-    setRequestedBulkRooms(Math.max(MAX_SELF_SERVICE_SEARCH_ROOMS + 1, roomCount));
+  const openBulkEnquiry = useCallback((roomCount, variant = "bulk") => {
+    if (variant === "unavailable") {
+      setRequestedBulkRooms(Math.max(1, roomCount));
+    } else {
+      setRequestedBulkRooms(Math.max(MAX_SELF_SERVICE_SEARCH_ROOMS + 1, roomCount));
+    }
+    setBulkEnquiryVariant(variant);
     setBulkEnquiryOpen(true);
     setModalState(null);
   }, []);
@@ -402,9 +415,30 @@ export default function PropertyRooms({ rooms }) {
 
   const tripKey = `${nightDates.join("|")}-${guests?.adults}-${guests?.children}-${guests?.rooms}`;
 
+  const enquiryDefaultLocation = useMemo(
+    () => buildEnquiryDefaultLocation(propertyName, selection?.trip),
+    [propertyName, selection?.trip?.city, selection?.trip?.state]
+  );
+
+  const hasUnavailableMealPlans = useMemo(() => {
+    if (!hasInventory || !inventoryB2c) return false;
+    return rooms.some((room) => {
+      const categoryData = getInventoryCategoryData(inventoryB2c, room.inventoryCategoryKey);
+      if (!categoryData) return false;
+      return getAvailableMealPlansForStay(categoryData, nightDates).length === 0;
+    });
+  }, [hasInventory, inventoryB2c, rooms, nightDates]);
+
   useEffect(() => {
     if (needsComboMode) setCustomizeExpanded(true);
   }, [tripKey, needsComboMode]);
+
+  useEffect(() => {
+    if (!hasUnavailableMealPlans) return;
+    if (noMealPlansEnquiryTripRef.current === tripKey) return;
+    noMealPlansEnquiryTripRef.current = tripKey;
+    openBulkEnquiry(searchRooms, "unavailable");
+  }, [hasUnavailableMealPlans, tripKey, searchRooms, openBulkEnquiry]);
 
   const handleConfirm = (count) => {
     if (!modalState || !selection) return;
@@ -684,13 +718,20 @@ export default function PropertyRooms({ rooms }) {
                       );
                     })
                   ) : hasInventory ? (
-                    <div className="flex min-h-[8rem] items-center justify-center p-6 text-center">
+                    <div className="flex min-h-[8rem] flex-col items-center justify-center gap-3 p-6 text-center">
                       <p className="text-sm text-[#757575]">
                         No meal plans available for this room category on your selected dates.
                         <span className="mt-1 block text-xs">
                           Try different check-in or check-out dates.
                         </span>
                       </p>
+                      <button
+                        type="button"
+                        onClick={() => openBulkEnquiry(searchRooms, "unavailable")}
+                        className="rounded border border-brand bg-brand px-4 py-2 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-brand-dark"
+                      >
+                        Send enquiry
+                      </button>
                     </div>
                   ) : (
                     (staticPlans.length > 0 ? staticPlans : [fallbackPlan]).map((plan) => (
@@ -762,7 +803,8 @@ export default function PropertyRooms({ rooms }) {
         onClose={() => setBulkEnquiryOpen(false)}
         guests={guests}
         requestedRooms={requestedBulkRooms}
-        defaultLocation={selection?.trip?.city || selection?.trip?.state || ""}
+        defaultLocation={enquiryDefaultLocation}
+        variant={bulkEnquiryVariant}
       />
     </section>
   );

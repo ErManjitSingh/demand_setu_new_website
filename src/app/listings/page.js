@@ -7,9 +7,10 @@ export { listingsMetadata as metadata } from "./ListingsPageView";
 export default async function ListingsPage({ searchParams }) {
   const params = await searchParams;
   const trip = parseTripFromSearchParams(params);
+  const hasExplicitCategory = Boolean(String(params?.category ?? "").trim());
   redirect(
     buildListingsSearchUrl({
-      category: trip.category,
+      category: hasExplicitCategory ? trip.category : "hotel",
       city: trip.city,
       state: trip.state,
       checkIn: trip.checkIn,

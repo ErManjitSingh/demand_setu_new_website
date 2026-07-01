@@ -5,10 +5,10 @@ import ListingsHero from "@/components/listings/ListingsHero";
 import ListingsSeoContent from "@/components/listings/ListingsSeoContent";
 import ListingsSeoSchema from "@/components/listings/ListingsSeoSchema";
 import ApiListingsResults from "@/components/listings/ApiListingsResults";
-import ListingsFilteredCatalog from "@/components/listings/ListingsFilteredCatalog";
 import ListingsResultsSkeleton from "@/components/listings/ListingsResultsSkeleton";
 import CategoryPills from "@/components/CategoryPills";
-import { LISTINGS, getCategoryLabel, CATEGORIES } from "@/lib/listings";
+import { getCategoryLabel, CATEGORIES } from "@/lib/listings";
+import { HOME_PAGE_STATE } from "@/lib/hotelListingsApi";
 import { fetchSeoListingRecord } from "@/lib/seoListingApi";
 
 export const listingsMetadata = {
@@ -34,7 +34,10 @@ export default async function ListingsPageView({ searchParams }) {
   const selectedCity = String(params?.city || "").trim();
   const selectedState = String(params?.state || "").trim();
   const locationKind = params?.locationKind ?? null;
-  const usesApiData = Boolean(selectedCity || selectedState);
+  const apiCity = selectedCity;
+  const apiState = selectedState || (!selectedCity ? HOME_PAGE_STATE : "");
+  const displayCity = selectedCity;
+  const displayState = selectedState || (!selectedCity ? HOME_PAGE_STATE : "");
   const label = getCategoryLabel(category);
   const activeCat = category === "all" ? "all" : category;
   const categoryMeta = CATEGORIES.find((c) => c.id === category);
@@ -49,15 +52,13 @@ export default async function ListingsPageView({ searchParams }) {
     rooms: initialRooms,
   };
 
-  const staticListings = usesApiData ? null : LISTINGS;
-
   const seoRecord =
-    usesApiData && category !== "all"
+    category !== "all"
       ? await fetchSeoListingRecord(
           category,
-          selectedCity,
-          selectedState,
-          locationKind
+          apiCity,
+          apiState,
+          locationKind || (apiState && !apiCity ? "state" : null)
         )
       : null;
 
@@ -68,10 +69,10 @@ export default async function ListingsPageView({ searchParams }) {
 
   const heroDescription =
     seoRecord?.subHeading ||
-    (selectedCity
-      ? `${selectedCity} stays handpicked for unforgettable memories.`
-      : selectedState
-        ? `${selectedState} stays handpicked for unforgettable memories.`
+    (displayCity
+      ? `${displayCity} stays handpicked for unforgettable memories.`
+      : displayState
+        ? `${displayState} stays handpicked for unforgettable memories.`
         : category === "all"
           ? "Hotels, villas & unique stays for unforgettable memories."
           : (categoryMeta?.description ??
@@ -85,9 +86,9 @@ export default async function ListingsPageView({ searchParams }) {
       </Suspense>
       <ListingsSearchLogger
         category={category}
-        city={selectedCity}
-        state={selectedState}
-        locationKind={locationKind}
+        city={displayCity}
+        state={displayState}
+        locationKind={locationKind || (displayState && !displayCity ? "state" : null)}
         checkIn={initialCheckIn || null}
         checkOut={initialCheckOut || null}
         guests={initialGuests}
@@ -97,9 +98,9 @@ export default async function ListingsPageView({ searchParams }) {
         cover={heroCover}
         description={heroDescription}
         seo={seoRecord}
-        initialCity={selectedCity}
-        initialState={selectedState}
-        initialLocationKind={locationKind}
+        initialCity={displayCity}
+        initialState={displayState}
+        initialLocationKind={locationKind || (displayState && !displayCity ? "state" : null)}
         initialCheckIn={initialCheckIn}
         initialCheckOut={initialCheckOut}
         initialAdults={initialAdults}
@@ -110,26 +111,17 @@ export default async function ListingsPageView({ searchParams }) {
       <div className="mx-auto max-w-6xl px-4 pt-8 sm:px-6 sm:pt-10">
         <CategoryPills activeCategory={activeCat} />
 
-        {usesApiData ? (
-          <Suspense
-            key={`${selectedCity}|${selectedState}|${category}`}
-            fallback={<ListingsResultsSkeleton activeCategory={activeCat} />}
-          >
-            <ApiListingsResults
-              city={selectedCity}
-              state={selectedState}
-              activeCat={activeCat}
-              label={label}
-            />
-          </Suspense>
-        ) : (
-          <ListingsFilteredCatalog
-            listings={staticListings}
+        <Suspense
+          key={`${apiCity}|${apiState}|${category}`}
+          fallback={<ListingsResultsSkeleton activeCategory={activeCat} />}
+        >
+          <ApiListingsResults
+            city={apiCity}
+            state={apiState}
             activeCat={activeCat}
             label={label}
-            locationFilterMode={false}
           />
-        )}
+        </Suspense>
 
         {seoRecord && <ListingsSeoContent seo={seoRecord} />}
       </div>
