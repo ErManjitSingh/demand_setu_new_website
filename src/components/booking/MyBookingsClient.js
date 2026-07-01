@@ -14,6 +14,7 @@ import {
   getGuestProfileFromSession,
   isBookingCancellationRequested,
 } from "@/lib/inventoryBookingApi";
+import { cancelHotelBookingByWebsiteId } from "@/lib/hotelBookingApi";
 import {
   mergeBookingForEmail,
   sendBookingConfirmationEmail,
@@ -482,6 +483,13 @@ export default function MyBookingsClient() {
 
     try {
       await cancelInventoryBooking(cancelTarget._id, cancelNote);
+      if (cancelTarget.websiteid) {
+        try {
+          await cancelHotelBookingByWebsiteId(cancelTarget.websiteid, cancelNote);
+        } catch (hotelBookingError) {
+          console.warn("[MyBookings] Hotel booking cancel update failed:", hotelBookingError);
+        }
+      }
       setCancelTarget(null);
       setCancelNote("");
       await loadBookings();
