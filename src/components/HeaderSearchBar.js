@@ -46,19 +46,31 @@ function HeaderSearchBarClient({
   const [editOpen, setEditOpen] = useState(false);
   const [searchError, setSearchError] = useState("");
 
-  const tripLocation =
-    trip.city || trip.state || fallbackQuery;
+  const isPropertyPage =
+    /^\/property\/[^/]+$/.test(pathname) ||
+    (isPropertySlugPath(pathname) && !pathname.endsWith("/book"));
+  const propertyCity = defaultCity || "";
+  const propertyState = defaultState || "";
+  const usePropertyLocation = isPropertyPage && (propertyCity || propertyState);
+
+  const resolvedCity = usePropertyLocation ? propertyCity : trip.city || defaultCity || "";
+  const resolvedState = usePropertyLocation ? propertyState : trip.state || defaultState || "";
+  const tripLocation = resolvedCity || resolvedState || fallbackQuery;
   const tripCheckInKey = trip.checkIn?.getTime() ?? 0;
   const tripCheckOutKey = trip.checkOut?.getTime() ?? 0;
   const tripGuestsKey = `${trip.guests.adults}-${trip.guests.children}-${trip.guests.rooms}`;
 
   useEffect(() => {
     setQuery((prev) => (prev === tripLocation ? prev : tripLocation));
-    setCity(trip.city || defaultCity || "");
-    setState(trip.state || defaultState || "");
+    setCity(resolvedCity);
+    setState(resolvedState);
     setLocationKind(
       trip.locationKind ||
-        (trip.state || defaultState ? "state" : trip.city || defaultCity ? "city" : null)
+        (resolvedState && !resolvedCity
+          ? "state"
+          : resolvedCity
+            ? "city"
+            : null)
     );
     if (trip.checkIn) {
       setCheckIn((prev) =>
@@ -83,10 +95,9 @@ function HeaderSearchBarClient({
     });
   }, [
     tripLocation,
-    trip.city,
-    trip.state,
-    defaultCity,
-    defaultState,
+    resolvedCity,
+    resolvedState,
+    fallbackQuery,
     tripCheckInKey,
     tripCheckOutKey,
     tripGuestsKey,

@@ -47,10 +47,15 @@ function tripLocationSlug(trip) {
 export function enrichListingsTripFromPath(pathname, trip = {}) {
   if (!isListingsSlugPath(pathname)) return { ...trip };
   const slug = parseListingsSlugPath(pathname);
-  const locationSlug =
-    String(trip.locationSlug || "").trim() ||
-    slug?.locationSlug ||
-    tripLocationSlug(trip);
+  const fromTrip = tripLocationSlug(trip);
+  const explicit = String(trip.locationSlug || "").trim();
+
+  // When user picks a city/state, that wins over the old pathname slug.
+  if (fromTrip && (trip.city || trip.state)) {
+    return { ...trip, locationSlug: fromTrip };
+  }
+
+  const locationSlug = explicit || slug?.locationSlug || fromTrip;
   return {
     ...trip,
     locationSlug: locationSlug || "",
@@ -569,6 +574,16 @@ export function mergeTripFromUrlAndSession(searchParams, session, pathname = "")
       city = session.city;
       state = "";
       locationKind = session.locationKind || "city";
+    } else if (
+      (session.city || session.state) &&
+      toLocationSlug(session.city || session.state) !== slug.locationSlug
+    ) {
+      city = session.city || "";
+      state = session.state || "";
+      locationKind =
+        session.locationKind ||
+        (state && !city ? "state" : city ? "city" : null);
+      locationSlug = toLocationSlug(city || state);
     } else if (!city && !state) {
       locationSlug = slug.locationSlug;
     }

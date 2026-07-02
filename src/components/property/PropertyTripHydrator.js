@@ -31,11 +31,18 @@ function PropertyTripHydratorClient({
     const session = loadTripSearch();
     let merged = mergeTripFromUrlAndSession(searchParams, session, pathname);
 
-    if (!merged.city && !merged.state) {
-      const fallbackState = String(propertyState || "").trim();
-      const fallbackCity = String(propertyCity || "").trim();
-      if (fallbackState) merged = { ...merged, state: fallbackState };
-      else if (fallbackCity) merged = { ...merged, city: fallbackCity };
+    const anchorCity = String(propertyCity || "").trim();
+    const anchorState = String(propertyState || "").trim();
+    if (anchorCity || anchorState) {
+      merged = {
+        ...merged,
+        city: anchorCity,
+        state: anchorState,
+        locationKind: anchorCity ? "city" : anchorState ? "state" : merged.locationKind,
+      };
+    } else if (!merged.city && !merged.state) {
+      if (anchorState) merged = { ...merged, state: anchorState };
+      else if (anchorCity) merged = { ...merged, city: anchorCity };
     }
 
     if (!merged.category || merged.category === "all") {
@@ -52,7 +59,15 @@ function PropertyTripHydratorClient({
         ? fillMissingBookingDefaults(merged)
         : merged;
 
-    saveTripSearch(trip);
+    if (session) {
+      saveTripSearch({
+        ...session,
+        checkIn: trip.checkIn,
+        checkOut: trip.checkOut,
+        guests: trip.guests,
+        category: trip.category || session.category,
+      });
+    }
 
     if (!tripParamsNeedSync(searchParams, trip, pathname)) return;
 

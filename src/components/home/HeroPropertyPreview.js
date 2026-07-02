@@ -44,6 +44,7 @@ export default function HeroPropertyPreview({ spotlight, sideCards = [] }) {
       <ListingsBookingAlert message={alert} onDismiss={() => setAlert("")} />
 
       <PropertyBookingLink
+        listing={spotlight}
         slug={spotlight.slug}
         requireBooking
         onBlocked={onBlocked}
@@ -69,6 +70,7 @@ export default function HeroPropertyPreview({ spotlight, sideCards = [] }) {
       {sideCards.map((item, i) => (
         <PropertyBookingLink
           key={item.slug}
+          listing={item}
           slug={item.slug}
           requireBooking
           onBlocked={onBlocked}

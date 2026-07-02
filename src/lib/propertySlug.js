@@ -58,23 +58,25 @@ export function parsePropertySegment(segment) {
 
 export function getPropertyLocationSlug(listing, trip = {}) {
   const city = String(
-    trip.city ||
-      listing?.propertyCity ||
+    listing?.propertyCity ||
       listing?.city ||
       listing?.location?.split(",")[0]?.trim() ||
+      trip.city ||
       ""
   ).trim();
   const state = String(
-    trip.state ||
-      listing?.propertyState ||
+    listing?.propertyState ||
       listing?.region ||
       listing?.location?.split(",")[1]?.trim() ||
+      trip.state ||
       ""
   ).trim();
 
   if (city) return toLocationSlug(city);
   if (state) return toLocationSlug(state);
-  return "";
+  const tripSlug = String(trip.locationSlug || "").trim();
+  if (tripSlug) return toLocationSlug(tripSlug);
+  return "india";
 }
 
 export function buildPropertyPath(listing, trip = {}) {
@@ -83,10 +85,7 @@ export function buildPropertyPath(listing, trip = {}) {
   const locationSlug = getPropertyLocationSlug(listing, trip);
   const propertySegment = buildPropertySegment(listing);
 
-  if (locationSlug) {
-    return `/${segment}/${locationSlug}/${propertySegment}`;
-  }
-  return `/${segment}/${propertySegment}`;
+  return `/${segment}/${locationSlug}/${propertySegment}`;
 }
 
 export function isPropertySlugPath(pathname) {

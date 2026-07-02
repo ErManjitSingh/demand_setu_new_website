@@ -16,7 +16,7 @@ import {
   persistTripSearch,
   validateTripSearch,
 } from "@/lib/bookingSearch";
-import { fromLocationSlug, isListingsSlugPath, parseListingsSlugPath } from "@/lib/listingsSlug";
+import { fromLocationSlug, isListingsSlugPath, parseListingsSlugPath, toLocationSlug } from "@/lib/listingsSlug";
 
 function guestsFromParts(adults, children, rooms) {
   return {
@@ -118,7 +118,21 @@ export default function ListingsHeroSearch({
       setQuery(normalized.city || normalized.state);
     };
 
-    if (hasUrlQueryLocation) {
+    const pathSlug = fromUrl.locationSlug || slugInfo?.locationSlug || "";
+    const sessionSlug = session
+      ? toLocationSlug(session.city || session.state || session.locationSlug || "")
+      : "";
+    const sessionDiffersFromPath =
+      Boolean(pathSlug && sessionSlug && sessionSlug !== pathSlug) &&
+      Boolean(session?.city || session?.state);
+
+    if (sessionDiffersFromPath) {
+      applyNormalizedLocation(
+        session.city,
+        session.state,
+        session.locationKind || (session.state && !session.city ? "state" : "city")
+      );
+    } else if (hasUrlQueryLocation) {
       applyNormalizedLocation(
         fromUrl.city,
         fromUrl.state,
@@ -177,12 +191,18 @@ export default function ListingsHeroSearch({
         city: loc.city,
         state: loc.state,
         locationKind: loc.kind,
-        locationSlug: fromUrl.locationSlug,
         checkIn: nextCheckIn,
         checkOut: nextCheckOut,
         guests: overrides.guests !== undefined ? overrides.guests : guests,
       });
-      if (nextTrip.checkIn && nextTrip.checkOut) {
+      const locationChanged =
+        overrides.city !== undefined ||
+        overrides.state !== undefined ||
+        overrides.locationKind !== undefined;
+      if (
+        (nextTrip.checkIn && nextTrip.checkOut) ||
+        locationChanged
+      ) {
         persistTripSearch(nextTrip, { router, pathname, searchParams });
       }
     },
@@ -223,7 +243,6 @@ export default function ListingsHeroSearch({
       city: normalized.city,
       state: normalized.state,
       locationKind: normalized.kind,
-      locationSlug: fromUrl.locationSlug,
       checkIn,
       checkOut,
       guests,

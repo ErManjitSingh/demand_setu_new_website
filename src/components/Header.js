@@ -50,9 +50,9 @@ export default function Header() {
       defaultState = listing.region ?? "";
       defaultCity = listing.location?.split(",")[0]?.trim() ?? "";
       category = listing.category || category;
-    } else {
-      defaultState = locationName;
-      defaultCity = "";
+    } else if (locationName) {
+      defaultCity = locationName;
+      defaultState = "";
     }
   }
 

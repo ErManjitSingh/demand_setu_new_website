@@ -10,6 +10,7 @@ import {
   normalizeGuests,
   TRIP_SEARCH_UPDATED,
 } from "@/lib/bookingSearch";
+import { isPropertySlugPath } from "@/lib/propertySlug";
 import { serializeChildAgesParam } from "@/lib/guestOccupancy";
 
 function guestsKey(guests) {
@@ -51,27 +52,30 @@ export function useTripSearch(serverFallback) {
 
     const session = mounted ? loadTripSearch() : null;
     const merged = mergeTripFromUrlAndSession(searchParams, session, pathname);
+    const isPropertyPage =
+      isPropertySlugPath(pathname) && !String(pathname).endsWith("/book");
+
+    let city = merged.city || "";
+    let state = merged.state || "";
+    if (isPropertyPage && (fbCity || fbState)) {
+      city = fbCity;
+      state = fbState;
+    } else {
+      city = city || fbCity;
+      state = state || fbState;
+    }
 
     return {
       category: merged.category || fallback.category || "all",
-      city: merged.city || fallback.city || "",
-      state: merged.state || fallback.state || "",
+      city,
+      state,
       locationKind:
         merged.locationKind ||
-        (merged.state && !merged.city
-          ? "state"
-          : merged.city
-            ? "city"
-            : null),
+        (state && !city ? "state" : city ? "city" : null),
       checkIn: merged.checkIn || fallback.checkIn || null,
       checkOut: merged.checkOut || fallback.checkOut || null,
       guests: normalizeGuests(merged.guests || fallback.guests || DEFAULT_GUESTS),
-      locationLabel:
-        merged.city ||
-        fallback.city ||
-        merged.state ||
-        fallback.state ||
-        "",
+      locationLabel: city || state || "",
     };
   }, [
     pathname,

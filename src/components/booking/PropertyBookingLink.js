@@ -15,7 +15,14 @@ import { normalizeListingRef } from "@/lib/propertySlug";
 function getStaticPropertyHref(listingOrSlug, requireBooking) {
   const listing = normalizeListingRef(listingOrSlug);
   const resolved = requireBooking ? fillMissingBookingDefaults({}) : {};
-  return buildPropertyUrl(listing, resolved);
+  const listingCity = String(listing?.propertyCity || listing?.city || "").trim();
+  const listingState = String(listing?.propertyState || listing?.region || "").trim();
+  const trip = {
+    ...resolved,
+    city: listingCity || resolved.city,
+    state: listingState || resolved.state,
+  };
+  return buildPropertyUrl(listing, trip);
 }
 
 function PropertyBookingLinkClient({
@@ -52,9 +59,23 @@ function PropertyBookingLinkClient({
     () => (requireBooking ? fillMissingBookingDefaults(trip) : trip),
     [requireBooking, trip]
   );
+  const propertyTrip = useMemo(() => {
+    const listingCity = String(
+      listingRef?.propertyCity || listingRef?.city || ""
+    ).trim();
+    const listingState = String(
+      listingRef?.propertyState || listingRef?.region || ""
+    ).trim();
+    if (!listingCity && !listingState) return resolvedTrip;
+    return {
+      ...resolvedTrip,
+      city: listingCity || resolvedTrip.city,
+      state: listingState || resolvedTrip.state,
+    };
+  }, [listingRef, resolvedTrip]);
   const href = useMemo(
-    () => buildPropertyUrl(listingRef, resolvedTrip),
-    [listingRef, resolvedTrip]
+    () => buildPropertyUrl(listingRef, propertyTrip),
+    [listingRef, propertyTrip]
   );
 
   if (!requireBooking) {

@@ -6,6 +6,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatGuestsRoomsLabel } from "@/components/booking/GuestsRoomsPicker";
 import BookingPriceBreakdown from "@/components/booking/BookingPriceBreakdown";
+import PhoneNumberField from "@/components/booking/PhoneNumberField";
 import { useTripSearch } from "@/hooks/useTripSearch";
 import { formatPrice, getCategoryLabel } from "@/lib/listings";
 import {
@@ -39,6 +40,11 @@ import {
   sendBookingWelcomeWhatsApp,
   sendPaymentConfirmWhatsApp,
 } from "@/lib/whatsappApi";
+import {
+  DEFAULT_PHONE_COUNTRY_ISO,
+  parseStoredPhone,
+  phoneIsoForCountryName,
+} from "@/lib/phoneCountryCodes";
 
 const AMENITY_ICONS = {
   "Free WiFi": "📶",
@@ -145,7 +151,8 @@ function BookingCheckoutFormClient({
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("India");
-  const [mobile, setMobile] = useState("");
+  const [phoneCountryIso, setPhoneCountryIso] = useState(DEFAULT_PHONE_COUNTRY_ISO);
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showFormHint, setShowFormHint] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -155,12 +162,14 @@ function BookingCheckoutFormClient({
   const formHintShownRef = useRef(false);
 
   const fullName = `${firstName} ${lastName}`.trim();
+  const fullMobile = String(phone || "").trim();
+  const phoneForApi = parseStoredPhone(fullMobile, phoneCountryIso).local;
 
   const isGuestFormEmpty =
     !firstName.trim() &&
     !lastName.trim() &&
     !email.trim() &&
-    !mobile.trim() &&
+    !phoneForApi &&
     !password.trim();
 
   useEffect(() => {
@@ -170,8 +179,13 @@ function BookingCheckoutFormClient({
     setFirstName(profile.firstName || "");
     setLastName(profile.lastName || "");
     setEmail(profile.email || "");
-    setMobile(profile.mobile || "");
     setCountry(profile.country || "India");
+    const parsedPhone = parseStoredPhone(
+      profile.mobile,
+      phoneIsoForCountryName(profile.country)
+    );
+    setPhoneCountryIso(parsedPhone.iso);
+    setPhone(parsedPhone.e164 || "");
   }, [authReady, isLoggedIn, session]);
 
   useEffect(() => {
@@ -206,7 +220,7 @@ function BookingCheckoutFormClient({
         fullName,
         email,
         country,
-        mobile,
+        mobile: phoneForApi,
         ...(isLoggedIn ? {} : { password }),
         ...guestOverrides,
       },
@@ -214,14 +228,14 @@ function BookingCheckoutFormClient({
 
   const sendBookingNotifications = async (bookingForNotifications, { paidOnline = false } = {}) => {
     try {
-      await sendBookingWelcomeWhatsApp({ mobile: mobile.trim() });
+      await sendBookingWelcomeWhatsApp({ mobile: phoneForApi });
     } catch (whatsappError) {
       console.warn("[Checkout] WhatsApp welcome template failed:", whatsappError);
     }
 
     if (paidOnline) {
       try {
-        await sendPaymentConfirmWhatsApp({ mobile: mobile.trim() });
+        await sendPaymentConfirmWhatsApp({ mobile: phoneForApi });
       } catch (whatsappError) {
         console.warn("[Checkout] WhatsApp payment_confirm template failed:", whatsappError);
       }
@@ -236,7 +250,7 @@ function BookingCheckoutFormClient({
 
   const handleBook = async (paymentMethod = "pay_now") => {
     const hasGuestDetails =
-      firstName.trim() && lastName.trim() && email.trim() && mobile.trim();
+      firstName.trim() && lastName.trim() && email.trim() && phoneForApi;
     const canSubmit = isLoggedIn
       ? hasGuestDetails
       : hasGuestDetails && password.trim();
@@ -290,7 +304,7 @@ function BookingCheckoutFormClient({
           customerDetails: {
             name: fullName,
             email: email.trim(),
-            phone: mobile.trim(),
+            phone: phoneForApi,
           },
           packageDetails: {
             property: submitPayload.property,
@@ -314,7 +328,7 @@ function BookingCheckoutFormClient({
           customer: {
             name: fullName,
             email: email.trim(),
-            phone: mobile.trim(),
+            phone: phoneForApi,
           },
           description: `Booking · ${listing.title}`,
         });
@@ -364,7 +378,7 @@ function BookingCheckoutFormClient({
           Thank you, <span className="font-bold text-foreground">{fullName}</span>. Your stay at{" "}
           <span className="font-bold text-foreground">{listing.title}</span> is confirmed. You
           will shortly receive a call on{" "}
-          <span className="font-bold text-brand">{mobile}</span>.
+          <span className="font-bold text-brand">{fullMobile}</span>.
         </p>
         <p className="mt-2 text-xs text-muted">Confirmation sent to {email}</p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -490,7 +504,7 @@ function BookingCheckoutFormClient({
             <LoggedInGuestSummary
               profile={loggedInProfile}
               email={email}
-              mobile={mobile}
+              mobile={fullMobile}
               country={country}
             />
           ) : (
@@ -553,7 +567,11 @@ function BookingCheckoutFormClient({
                 <select
                   id="country"
                   value={country}
-                  onChange={(e) => setCountry(e.target.value)}
+                  onChange={(e) => {
+                    const nextCountry = e.target.value;
+                    setCountry(nextCountry);
+                    setPhoneCountryIso(phoneIsoForCountryName(nextCountry));
+                  }}
                   className="mt-1.5 w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-sm font-medium outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
                 >
                   {["India", "United States", "United Kingdom", "UAE", "Singapore", "Australia"].map(
@@ -567,26 +585,15 @@ function BookingCheckoutFormClient({
               </div>
 
               <div className="mt-4">
-                <label htmlFor="mobile" className="block text-sm font-bold text-foreground">
-                  Phone number <span className="text-brand">*</span>
-                </label>
-                <p className="mt-0.5 text-xs text-muted">
-                  Needed by the property to validate your booking
-                </p>
-                <div className="mt-1.5 flex gap-2">
-                  <span className="flex shrink-0 items-center rounded-lg border border-stone-300 bg-stone-50 px-3 text-sm font-semibold text-stone-600">
-                    IN +91
-                  </span>
-                  <input
-                    id="mobile"
-                    type="tel"
-                    required
-                    value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
-                    placeholder="98765 43210"
-                    className="min-w-0 flex-1 rounded-lg border border-stone-300 px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-                  />
-                </div>
+                <PhoneNumberField
+                  id="mobile"
+                  required
+                  hint="Needed by the property to validate your booking"
+                  country={phoneCountryIso}
+                  onCountryChange={setPhoneCountryIso}
+                  value={phone}
+                  onChange={setPhone}
+                />
               </div>
 
               <div className="mt-4">
@@ -747,7 +754,7 @@ function LoggedInGuestSummary({ profile, email, mobile, country }) {
         </div>
         <div>
           <dt className="text-[10px] font-bold uppercase tracking-wide text-muted">Mobile</dt>
-          <dd className="mt-0.5 text-sm font-semibold text-foreground">+91 {mobile}</dd>
+          <dd className="mt-0.5 text-sm font-semibold text-foreground">{mobile}</dd>
         </div>
         <div className="sm:col-span-2">
           <dt className="text-[10px] font-bold uppercase tracking-wide text-muted">Country</dt>
