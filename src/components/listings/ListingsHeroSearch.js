@@ -8,15 +8,15 @@ import StateCityLocationField from "@/components/location/StateCityLocationField
 import { useTripLocationSearch } from "@/hooks/useTripLocationSearch";
 import { parseDateParam } from "@/lib/dates";
 import {
-  buildListingsUrlPreservingFilters,
   DEFAULT_GUESTS,
+  enrichListingsTripFromPath,
   loadTripSearch,
   parseGuestsFromParams,
   parseListingsUrl,
   persistTripSearch,
   validateTripSearch,
 } from "@/lib/bookingSearch";
-import { isListingsSlugPath } from "@/lib/listingsSlug";
+import { fromLocationSlug, isListingsSlugPath, parseListingsSlugPath } from "@/lib/listingsSlug";
 
 function guestsFromParts(adults, children, rooms) {
   return {
@@ -40,6 +40,12 @@ function readTripFromUrl(pathname, searchParams) {
   return trip;
 }
 
+function slugDisplayName(pathname, locationSlug = "") {
+  const slug = parseListingsSlugPath(pathname);
+  if (slug?.locationName) return slug.locationName;
+  return fromLocationSlug(locationSlug);
+}
+
 export default function ListingsHeroSearch({
   category,
   initialCity = "",
@@ -56,6 +62,7 @@ export default function ListingsHeroSearch({
   const searchParams = useSearchParams();
   const queryKey = `${pathname}?${searchParams.toString()}`;
   const { resolveLocation, logSearch } = useTripLocationSearch();
+  const slugInfo = isListingsSlugPath(pathname) ? parseListingsSlugPath(pathname) : null;
 
   const serverFallback = useMemo(
     () => ({
@@ -80,7 +87,9 @@ export default function ListingsHeroSearch({
     ]
   );
 
-  const [query, setQuery] = useState(initialCity || initialState);
+  const [query, setQuery] = useState(
+    initialCity || initialState || slugInfo?.locationName || ""
+  );
   const [city, setCity] = useState(initialCity);
   const [state, setState] = useState(initialState);
   const [locationKind, setLocationKind] = useState(serverFallback.locationKind);
@@ -92,10 +101,10 @@ export default function ListingsHeroSearch({
   useEffect(() => {
     const fromUrl = readTripFromUrl(pathname, searchParams);
     const session = loadTripSearch();
+    const hasUrlQueryLocation = Boolean(fromUrl.city || fromUrl.state);
     const hasUrlDates =
       searchParams.has("checkIn") && searchParams.has("checkOut");
     const hasUrlGuests = searchParams.has("adults");
-    const hasUrlLocation = Boolean(fromUrl.city || fromUrl.state);
 
     const applyNormalizedLocation = (cityVal, stateVal, kindVal) => {
       const normalized = resolveLocation({
@@ -109,7 +118,7 @@ export default function ListingsHeroSearch({
       setQuery(normalized.city || normalized.state);
     };
 
-    if (hasUrlLocation) {
+    if (hasUrlQueryLocation) {
       applyNormalizedLocation(
         fromUrl.city,
         fromUrl.state,
@@ -127,6 +136,10 @@ export default function ListingsHeroSearch({
         session.state,
         session.locationKind || (session.state ? "state" : "city")
       );
+    } else if (fromUrl.locationSlug) {
+      setQuery(slugDisplayName(pathname, fromUrl.locationSlug));
+    } else if (session?.locationSlug) {
+      setQuery(fromLocationSlug(session.locationSlug));
     }
 
     if (hasUrlDates) {
@@ -149,20 +162,26 @@ export default function ListingsHeroSearch({
 
   const syncTripEdit = useCallback(
     (overrides = {}) => {
+      const fromUrl = readTripFromUrl(pathname, searchParams);
       const loc = resolveLocation({
         city: overrides.city !== undefined ? overrides.city : city,
         state: overrides.state !== undefined ? overrides.state : state,
         kind: overrides.locationKind ?? locationKind,
       });
-      const nextTrip = {
+      const nextCheckIn =
+        overrides.checkIn !== undefined ? overrides.checkIn : checkIn || fromUrl.checkIn;
+      const nextCheckOut =
+        overrides.checkOut !== undefined ? overrides.checkOut : checkOut || fromUrl.checkOut;
+      const nextTrip = enrichListingsTripFromPath(pathname, {
         category: category || "all",
         city: loc.city,
         state: loc.state,
         locationKind: loc.kind,
-        checkIn: overrides.checkIn !== undefined ? overrides.checkIn : checkIn,
-        checkOut: overrides.checkOut !== undefined ? overrides.checkOut : checkOut,
+        locationSlug: fromUrl.locationSlug,
+        checkIn: nextCheckIn,
+        checkOut: nextCheckOut,
         guests: overrides.guests !== undefined ? overrides.guests : guests,
-      };
+      });
       if (nextTrip.checkIn && nextTrip.checkOut) {
         persistTripSearch(nextTrip, { router, pathname, searchParams });
       }
@@ -197,16 +216,18 @@ export default function ListingsHeroSearch({
   };
 
   const handleSearch = () => {
+    const fromUrl = readTripFromUrl(pathname, searchParams);
     const normalized = resolveLocation({ city, state, kind: locationKind });
-    const trip = {
+    const trip = enrichListingsTripFromPath(pathname, {
       category: category || "all",
       city: normalized.city,
       state: normalized.state,
       locationKind: normalized.kind,
+      locationSlug: fromUrl.locationSlug,
       checkIn,
       checkOut,
       guests,
-    };
+    });
 
     const err = validateTripSearch(trip);
     if (err) {
@@ -218,11 +239,9 @@ export default function ListingsHeroSearch({
     setCity(trip.city);
     setState(trip.state);
     setLocationKind(normalized.kind);
-    setQuery(trip.city || trip.state);
+    setQuery(trip.city || trip.state || slugDisplayName(pathname, fromUrl.locationSlug));
     logSearch("listings-page-search", trip);
     persistTripSearch(trip, { router, pathname, searchParams });
-
-    router.push(buildListingsUrlPreservingFilters(searchParams, trip));
   };
 
   return (

@@ -10,6 +10,7 @@ import CategoryPills from "@/components/CategoryPills";
 import { getCategoryLabel, CATEGORIES } from "@/lib/listings";
 import { HOME_PAGE_STATE } from "@/lib/hotelListingsApi";
 import { fetchSeoListingRecord } from "@/lib/seoListingApi";
+import { getDefaultListingsDirectUrlDates, toDateParam } from "@/lib/dates";
 
 export const listingsMetadata = {
   title: "Explore Stays | Demand Setu",
@@ -41,8 +42,14 @@ export default async function ListingsPageView({ searchParams }) {
   const label = getCategoryLabel(category);
   const activeCat = category === "all" ? "all" : category;
   const categoryMeta = CATEGORIES.find((c) => c.id === category);
-  const initialCheckIn = String(params?.checkIn || "").trim();
-  const initialCheckOut = String(params?.checkOut || "").trim();
+  const listingDefaultDates = getDefaultListingsDirectUrlDates();
+  const hasLocationContext = Boolean(displayCity || displayState);
+  const initialCheckIn =
+    String(params?.checkIn || "").trim() ||
+    (hasLocationContext ? toDateParam(listingDefaultDates.checkIn) : "");
+  const initialCheckOut =
+    String(params?.checkOut || "").trim() ||
+    (hasLocationContext ? toDateParam(listingDefaultDates.checkOut) : "");
   const initialAdults = parsePositiveInt(params?.adults, 2);
   const initialChildren = parseNonNegativeInt(params?.children, 0);
   const initialRooms = parsePositiveInt(params?.rooms, 1);

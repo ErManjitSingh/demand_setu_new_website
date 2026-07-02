@@ -1,4 +1,4 @@
-import { getDefaultBookingDates, parseDateParam, toDateParam, addDays } from "@/lib/dates";
+import { getDefaultBookingDates, getDefaultListingsDirectUrlDates, parseDateParam, toDateParam, addDays } from "@/lib/dates";
 import {
   applyMinimumRooms,
   getGuestOccupancyError,
@@ -36,9 +36,41 @@ function notifyTripSearchUpdated() {
 export const DEFAULT_GUESTS = { adults: 2, children: 0, rooms: 1, childAges: [] };
 
 function tripLocationSlug(trip) {
+  const explicit = String(trip?.locationSlug || "").trim();
+  if (explicit) return toLocationSlug(explicit);
   const city = String(trip?.city || "").trim();
   const state = String(trip?.state || "").trim();
   return toLocationSlug(city || state);
+}
+
+/** Keep slug-only listings paths (e.g. /hotels/nubra) when building URLs from partial trip edits. */
+export function enrichListingsTripFromPath(pathname, trip = {}) {
+  if (!isListingsSlugPath(pathname)) return { ...trip };
+  const slug = parseListingsSlugPath(pathname);
+  const locationSlug =
+    String(trip.locationSlug || "").trim() ||
+    slug?.locationSlug ||
+    tripLocationSlug(trip);
+  return {
+    ...trip,
+    locationSlug: locationSlug || "",
+  };
+}
+
+/** Fill missing check-in/out and guests for direct listings URLs (kal / parso, 2 adults, 1 room). */
+export function fillMissingListingsTripDefaults(trip = {}) {
+  const { checkIn, checkOut } = getDefaultListingsDirectUrlDates();
+  let nextCheckIn = trip.checkIn || checkIn;
+  let nextCheckOut = trip.checkOut || checkOut;
+  if (!nextCheckOut || nextCheckOut <= nextCheckIn) {
+    nextCheckOut = addDays(nextCheckIn, 1);
+  }
+  return {
+    ...trip,
+    checkIn: nextCheckIn,
+    checkOut: nextCheckOut,
+    guests: normalizeGuests(trip.guests || DEFAULT_GUESTS),
+  };
 }
 
 /** Fill missing check-in/out and guests with today, tomorrow, and 2 adults / 1 room. */
@@ -135,8 +167,11 @@ export function validateSearchDates({ checkIn, checkOut }) {
   return null;
 }
 
-export function validateTripSearch({ city, state, checkIn, checkOut, guests }) {
-  const destination = String(city || "").trim() || String(state || "").trim();
+export function validateTripSearch({ city, state, locationSlug, checkIn, checkOut, guests }) {
+  const destination =
+    String(city || "").trim() ||
+    String(state || "").trim() ||
+    String(locationSlug || "").trim();
   if (!destination) {
     return "Please select a city or state.";
   }
@@ -250,6 +285,7 @@ export function buildListingsUrlFromParams(params, tripOverride = null) {
     category: trip.category ?? "all",
     city: trip.city,
     state: trip.state,
+    locationSlug: trip.locationSlug,
   });
   const query = listingsQueryFromParams(source);
   appendBookingToParams(query, trip);
@@ -278,11 +314,19 @@ export function parseListingsUrl(pathname, searchParams) {
       city,
       state,
       locationKind: state && !city ? "state" : city ? "city" : null,
+      locationSlug: slug.locationSlug || toLocationSlug(city || state),
     };
   }
 
-  // Slug-only: city/state/kind filled from session or server API catalog.
-  return { ...queryTrip, category, city: "", state: "", locationKind: null };
+  // Slug-only: city/state resolved server-side; keep slug for URL building.
+  return {
+    ...queryTrip,
+    category,
+    city: "",
+    state: "",
+    locationKind: null,
+    locationSlug: slug.locationSlug || "",
+  };
 }
 
 export function buildPropertyUrl(listingOrSlug, trip = {}) {
@@ -364,6 +408,7 @@ export function saveTripSearch(trip) {
       category: trip.category && trip.category !== "all" ? trip.category : "",
       city: String(trip.city || "").trim(),
       state: String(trip.state || "").trim(),
+      locationSlug: String(trip.locationSlug || "").trim(),
       locationKind:
         trip.locationKind === "state" || trip.locationKind === "city"
           ? trip.locationKind
@@ -385,10 +430,15 @@ export function saveTripSearch(trip) {
  */
 export function persistTripSearch(trip, sync) {
   const existing = loadTripSearch();
-  const merged = {
+  const pathname = sync?.pathname || "";
+  let merged = {
     category: trip.category ?? existing?.category ?? "all",
     city: trip.city !== undefined ? String(trip.city || "").trim() : existing?.city || "",
     state: trip.state !== undefined ? String(trip.state || "").trim() : existing?.state || "",
+    locationSlug:
+      trip.locationSlug !== undefined
+        ? String(trip.locationSlug || "").trim()
+        : existing?.locationSlug || "",
     locationKind:
       trip.locationKind !== undefined
         ? trip.locationKind
@@ -401,6 +451,8 @@ export function persistTripSearch(trip, sync) {
   if (merged.state && !merged.city) merged.locationKind = "state";
   else if (merged.city && !merged.state) merged.locationKind = "city";
   else if (!merged.city && !merged.state) merged.locationKind = null;
+
+  merged = enrichListingsTripFromPath(pathname, merged);
 
   saveTripSearch(merged);
 
@@ -449,6 +501,7 @@ export function loadTripSearch() {
       category: String(data.category || "").trim() || "all",
       city: String(data.city || "").trim(),
       state: String(data.state || "").trim(),
+      locationSlug: String(data.locationSlug || "").trim(),
       locationKind:
         data.locationKind === "state" || data.locationKind === "city"
           ? data.locationKind
@@ -501,6 +554,7 @@ export function mergeTripFromUrlAndSession(searchParams, session, pathname = "")
   let city = url.city;
   let state = url.state;
   let locationKind = url.locationKind || null;
+  let locationSlug = url.locationSlug || slug?.locationSlug || "";
 
   if (hasExplicitCity || hasExplicitState) {
     city = url.city;
@@ -515,6 +569,8 @@ export function mergeTripFromUrlAndSession(searchParams, session, pathname = "")
       city = session.city;
       state = "";
       locationKind = session.locationKind || "city";
+    } else if (!city && !state) {
+      locationSlug = slug.locationSlug;
     }
   } else if (hasLocation) {
     city = url.city || session.city || "";
@@ -530,14 +586,68 @@ export function mergeTripFromUrlAndSession(searchParams, session, pathname = "")
       (state && !city ? "state" : city ? "city" : null);
   }
 
+  if (!locationSlug && slug?.locationSlug) {
+    locationSlug = slug.locationSlug;
+  }
+
   return {
     category: hasCategory ? url.category : session.category || url.category,
     city,
     state,
     locationKind,
+    locationSlug,
     checkIn: hasCheckIn ? url.checkIn : session.checkIn || url.checkIn,
     checkOut: hasCheckOut ? url.checkOut : session.checkOut || url.checkOut,
     guests: hasGuests ? url.guests : session.guests || url.guests,
+  };
+}
+
+/** Resolve city/state/slug for listings URL updates (category switch, filters). */
+export function resolveListingsTripFromPath(pathname, searchParams, overrides = {}) {
+  const trip = isListingsSlugPath(pathname)
+    ? parseListingsUrl(pathname, searchParams)
+    : parseTripFromSearchParams(searchParams);
+  const session = loadTripSearch();
+  const slugInfo = isListingsSlugPath(pathname) ? parseListingsSlugPath(pathname) : null;
+
+  let city = overrides.city ?? trip.city ?? "";
+  let state = overrides.state ?? trip.state ?? "";
+  let locationKind = overrides.locationKind ?? trip.locationKind ?? null;
+  let locationSlug =
+    overrides.locationSlug ?? trip.locationSlug ?? slugInfo?.locationSlug ?? "";
+
+  if (session && (session.city || session.state)) {
+    if (!city && !state) {
+      city = session.city;
+      state = session.state;
+      locationKind = session.locationKind;
+    } else if (session.locationKind) {
+      locationKind = session.locationKind;
+      if (session.locationKind === "state" && session.state) {
+        city = "";
+        state = session.state;
+      } else if (session.locationKind === "city" && session.city) {
+        city = session.city;
+        state = "";
+      }
+    }
+  }
+
+  if (!city && !state && slugInfo?.locationSlug) {
+    locationSlug = locationSlug || slugInfo.locationSlug;
+  }
+
+  return {
+    ...trip,
+    ...overrides,
+    city,
+    state,
+    locationKind,
+    locationSlug,
+    category: overrides.category ?? trip.category,
+    checkIn: overrides.checkIn ?? trip.checkIn,
+    checkOut: overrides.checkOut ?? trip.checkOut,
+    guests: overrides.guests ?? trip.guests,
   };
 }
 
@@ -548,6 +658,17 @@ export function tripParamsNeedSync(searchParams, mergedTrip, pathname = "") {
 
   if (isListingsSlugPath(pathname)) {
     const slug = parseListingsSlugPath(pathname);
+    const hasListingLocation = Boolean(
+      mergedTrip.city || mergedTrip.state || mergedTrip.locationSlug || slug?.locationSlug
+    );
+    if (hasListingLocation) {
+      if (!hasSearchParam(searchParams, "checkIn") || !hasSearchParam(searchParams, "checkOut")) {
+        return true;
+      }
+      if (!hasSearchParam(searchParams, "adults") || !hasSearchParam(searchParams, "rooms")) {
+        return true;
+      }
+    }
     if (slug?.locationSlug) {
       if (hasSearchParam(searchParams, "state") || hasSearchParam(searchParams, "city")) {
         return true;

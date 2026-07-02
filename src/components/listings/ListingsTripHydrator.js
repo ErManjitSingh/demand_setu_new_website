@@ -4,13 +4,13 @@ import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   buildListingsUrlPreservingFilters,
-  fillMissingBookingDefaults,
+  enrichListingsTripFromPath,
+  fillMissingListingsTripDefaults,
   loadTripSearch,
   mergeTripFromUrlAndSession,
-  saveTripSearch,
   tripParamsNeedSync,
 } from "@/lib/bookingSearch";
-import { isListingsSlugPath } from "@/lib/listingsSlug";
+import { isListingsSlugPath, parseListingsSlugPath } from "@/lib/listingsSlug";
 
 export default function ListingsTripHydrator() {
   const router = useRouter();
@@ -21,20 +21,38 @@ export default function ListingsTripHydrator() {
   useEffect(() => {
     if (!isListingsSlugPath(pathname) && pathname !== "/listings") return;
 
+    const slug = parseListingsSlugPath(pathname);
     const session = loadTripSearch();
     const merged = mergeTripFromUrlAndSession(searchParams, session, pathname);
-    const hasLocation = Boolean(merged.city || merged.state);
-    const hasDates = Boolean(merged.checkIn && merged.checkOut);
+    const hasUrlDates =
+      searchParams.has("checkIn") && searchParams.has("checkOut");
+    const hasUrlGuests =
+      searchParams.has("adults") && searchParams.has("rooms");
+    const hasLocation = Boolean(
+      merged.city || merged.state || merged.locationSlug || slug?.locationSlug
+    );
 
-    if (!hasLocation && !hasDates) return;
+    if (!hasLocation && !hasUrlDates) return;
 
-    const trip = hasLocation && !hasDates ? fillMissingBookingDefaults(merged) : merged;
-
-    saveTripSearch(trip);
+    let trip = merged;
+    if (!trip.locationSlug && slug?.locationSlug) {
+      trip = { ...trip, locationSlug: slug.locationSlug };
+    }
+    if (hasLocation && (!hasUrlDates || !hasUrlGuests)) {
+      trip = fillMissingListingsTripDefaults({
+        ...trip,
+        checkIn: hasUrlDates ? trip.checkIn : null,
+        checkOut: hasUrlDates ? trip.checkOut : null,
+        guests: hasUrlGuests ? trip.guests : undefined,
+      });
+    }
 
     if (!tripParamsNeedSync(searchParams, trip, pathname)) return;
 
-    const nextUrl = buildListingsUrlPreservingFilters(searchParams, trip);
+    const nextUrl = buildListingsUrlPreservingFilters(
+      searchParams,
+      enrichListingsTripFromPath(pathname, trip)
+    );
     if (lastSynced.current === nextUrl) return;
     lastSynced.current = nextUrl;
 

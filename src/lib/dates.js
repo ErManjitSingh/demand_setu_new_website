@@ -93,6 +93,13 @@ export function parseDateParam(str) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Default stay: check-in tomorrow, check-out day after (kal / parso). */
+export function getDefaultListingsDirectUrlDates() {
+  const checkIn = addDays(startOfDay(new Date()), 1);
+  const checkOut = addDays(checkIn, 1);
+  return { checkIn, checkOut };
+}
+
 /** Default stay: check-in today, check-out tomorrow. */
 export function getDefaultBookingDates() {
   const checkIn = startOfDay(new Date());

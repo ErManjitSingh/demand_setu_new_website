@@ -1,31 +1,13 @@
 import Link from "next/link";
 import PaymentLogos from "@/components/PaymentLogos";
+import { FOOTER_SERVICES, getFooterDestinations } from "@/lib/footerLinks";
 
 const QUICK_LINKS = [
-  { label: "About Us", href: "https://www.demandsetutours.com" },
-  { label: "Contact Us", href: "https://www.demandsetutours.com" },
-  { label: "Travel Blog", href: "#" },
-  { label: "Testimonials", href: "#" },
-  { label: "FAQ", href: "#" },
-  { label: "Careers", href: "#" },
-];
-
-const DESTINATIONS = [
-  "Ladakh",
-  "Himachal Pradesh",
-  "Rajasthan",
-  "Kerala",
-  "Goa",
-  "Kashmir",
-];
-
-const SERVICES = [
-  "Tour Packages",
-  "Hotels",
-  "Flights",
-  "Transport",
-  "Visa Assistance",
-  "Travel Insurance",
+  { label: "About Us", href: "/about-us" },
+  { label: "Contact Us", href: "/contact-us" },
+  { label: "Travel Blog", href: "/travel-blog" },
+  { label: "Testimonials", href: "/testimonials" },
+  { label: "FAQ", href: "/faq" },
 ];
 
 const SOCIAL = [
@@ -57,7 +39,9 @@ function FooterLink({ href, children }) {
   );
 }
 
-export default function Footer() {
+export default async function Footer() {
+  const destinations = await getFooterDestinations();
+
   return (
     <footer className="mt-auto bg-[#121212] pb-24 text-white md:pb-0">
       <div className="mx-auto max-w-6xl px-4 pt-10 sm:px-6 sm:pt-14">
@@ -173,9 +157,9 @@ export default function Footer() {
               Popular Destinations
             </h4>
             <ul className="mt-5 space-y-2.5">
-              {DESTINATIONS.map((dest) => (
-                <li key={dest}>
-                  <FooterLink href="/listings">{dest}</FooterLink>
+              {destinations.map((dest) => (
+                <li key={dest.label}>
+                  <FooterLink href={dest.href}>{dest.label}</FooterLink>
                 </li>
               ))}
             </ul>
@@ -188,17 +172,9 @@ export default function Footer() {
               Travel Services
             </h4>
             <ul className="mt-5 space-y-2.5">
-              {SERVICES.map((service) => (
-                <li key={service}>
-                  <FooterLink
-                    href={
-                      service === "Hotels"
-                        ? "/listings?category=hotel"
-                        : "/listings"
-                    }
-                  >
-                    {service}
-                  </FooterLink>
+              {FOOTER_SERVICES.map((service) => (
+                <li key={service.label}>
+                  <FooterLink href={service.href}>{service.label}</FooterLink>
                 </li>
               ))}
             </ul>

@@ -7,12 +7,12 @@ import { ALL_STAYS_CATEGORY, TOUR_PACKAGES_CATEGORY } from "@/lib/categoryExplor
 import { useCategoryExplore } from "@/hooks/useCategoryExplore";
 import {
   buildListingsUrlPreservingFilters,
-  loadTripSearch,
+  fillMissingListingsTripDefaults,
   parseListingsUrl,
-  parseTripFromSearchParams,
+  resolveListingsTripFromPath,
 } from "@/lib/bookingSearch";
 import { startNavigationLoading } from "@/lib/navigationLoading";
-import { isListingsSlugPath } from "@/lib/listingsSlug";
+import { isListingsSlugPath, parseListingsSlugPath } from "@/lib/listingsSlug";
 
 function CategoryPillsClient({ activeCategory = "all" }) {
   const pathname = usePathname();
@@ -22,8 +22,9 @@ function CategoryPillsClient({ activeCategory = "all" }) {
 
   const hasLocation = (() => {
     if (isListingsSlugPath(pathname)) {
+      const slug = parseListingsSlugPath(pathname);
       const trip = parseListingsUrl(pathname, searchParams);
-      return Boolean(trip.city || trip.state);
+      return Boolean(trip.city || trip.state || trip.locationSlug || slug?.locationSlug);
     }
     return (
       pathname === "/listings" &&
@@ -38,39 +39,18 @@ function CategoryPillsClient({ activeCategory = "all" }) {
       : "bg-white text-foreground shadow-md shadow-stone-200/60 ring-1 ring-stone-900/5 hover:ring-brand/30 hover:shadow-lg";
 
   const setCategory = (catId) => {
-    const session = loadTripSearch();
-    const trip = isListingsSlugPath(pathname)
-      ? parseListingsUrl(pathname, searchParams)
-      : parseTripFromSearchParams(searchParams);
-
-    let city = trip.city;
-    let state = trip.state;
-    let locationKind = trip.locationKind;
-
-    if (session && (session.city || session.state)) {
-      if (!city && !state) {
-        city = session.city;
-        state = session.state;
-        locationKind = session.locationKind;
-      } else if (session.locationKind) {
-        locationKind = session.locationKind;
-        if (session.locationKind === "state" && session.state) {
-          city = "";
-          state = session.state;
-        } else if (session.locationKind === "city" && session.city) {
-          city = session.city;
-          state = "";
-        }
-      }
-    }
-
-    const nextTrip = {
-      ...trip,
-      city,
-      state,
-      locationKind,
+    const hasUrlDates =
+      searchParams.has("checkIn") && searchParams.has("checkOut");
+    const hasUrlGuests =
+      searchParams.has("adults") && searchParams.has("rooms");
+    const baseTrip = resolveListingsTripFromPath(pathname, searchParams);
+    const nextTrip = fillMissingListingsTripDefaults({
+      ...baseTrip,
       category: catId === "all" ? "all" : catId,
-    };
+      checkIn: hasUrlDates ? baseTrip.checkIn : null,
+      checkOut: hasUrlDates ? baseTrip.checkOut : null,
+      guests: hasUrlGuests ? baseTrip.guests : undefined,
+    });
     const params = new URLSearchParams(searchParams.toString());
     params.delete("category");
     params.delete("propertyType");

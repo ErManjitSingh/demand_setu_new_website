@@ -57,18 +57,25 @@ export function parseListingsSlugPath(pathname) {
   };
 }
 
-export function buildListingsSlugPath({ category = "all", city = "", state = "" } = {}) {
+export function buildListingsSlugPath({
+  category = "all",
+  city = "",
+  state = "",
+  locationSlug = "",
+} = {}) {
   const cat = String(category || "all");
   const segment = CATEGORY_TO_SEGMENT[cat] ?? "hotels";
   const cityName = String(city || "").trim();
   const stateName = String(state || "").trim();
-  const locationSlug = cityName
-    ? toLocationSlug(cityName)
-    : stateName
-      ? toLocationSlug(stateName)
-      : "";
+  const resolvedSlug =
+    String(locationSlug || "").trim() ||
+    (cityName
+      ? toLocationSlug(cityName)
+      : stateName
+        ? toLocationSlug(stateName)
+        : "");
 
-  if (locationSlug) return `/${segment}/${locationSlug}`;
+  if (resolvedSlug) return `/${segment}/${resolvedSlug}`;
   return `/${segment}`;
 }
 
