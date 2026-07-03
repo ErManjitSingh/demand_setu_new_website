@@ -227,14 +227,24 @@ export function getApiPropertyPolicies(hotel) {
 
 export function getApiPropertyAddress(hotel) {
   const location = hotel?.location || {};
-  const parts = [
-    String(location.address || "").trim(),
-    String(location.city || "").trim(),
-    String(location.state || "").trim(),
-    String(location.pincode || "").trim(),
-  ].filter(Boolean);
+  const address = String(location.address || "").trim();
+  const city = String(location.city || "").trim();
+  const state = String(location.state || "").trim();
+  const pincode = String(location.pincode || "").trim();
+  const addressLower = address.toLowerCase();
 
-  return parts.join(", ");
+  const parts = [address];
+  if (city && !addressLower.includes(city.toLowerCase())) {
+    parts.push(city);
+  }
+  if (state && !addressLower.includes(state.toLowerCase())) {
+    parts.push(state);
+  }
+  if (pincode && !address.includes(pincode)) {
+    parts.push(pincode);
+  }
+
+  return parts.filter(Boolean).join(", ");
 }
 
 export function getApiPropertyAbout(hotel, listing) {

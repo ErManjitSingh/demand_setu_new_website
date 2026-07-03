@@ -10,6 +10,7 @@ import PropertyTripHydrator from "@/components/property/PropertyTripHydrator";
 import PropertyBreadcrumb from "@/components/property/PropertyBreadcrumb";
 import PropertyNavTabs from "@/components/property/PropertyNavTabs";
 import PropertyStarRating from "@/components/property/PropertyStarRating";
+import PropertyLocationMap from "@/components/property/PropertyLocationMap";
 import SectionHeading from "@/components/SectionHeading";
 import { getListingsByCategory, SAMPLE_REVIEWS } from "@/lib/listings";
 import { parseTripFromSearchParams, serializeTripForClient } from "@/lib/bookingSearch";
@@ -220,17 +221,11 @@ export default async function PropertyPageView({ resolved, searchParams }) {
                   {listing.title} Location
                 </h2>
                 <p className="mt-2 text-sm text-[#4a4a4a]">{fullAddress || listing.location}</p>
-                <div className="mt-4 flex h-48 items-center justify-center rounded-sm border border-[#e8e8e8] bg-[#f8f8f8] sm:h-56">
-                  <div className="px-4 text-center">
-                    <p className="text-sm font-bold text-[#1a1a1a]">
-                      {hotel?.location?.city || listing.location}
-                      {hotel?.location?.state ? `, ${hotel.location.state}` : ""}
-                    </p>
-                    <p className="mt-1 text-xs text-[#757575]">
-                      Exact address shared after booking confirmation
-                    </p>
-                  </div>
-                </div>
+                <PropertyLocationMap
+                  propertyName={listing.title}
+                  address={fullAddress || listing.location}
+                  className="mt-4"
+                />
               </section>
 
               <div className="mt-4 rounded-sm border border-[#e0e0e0] bg-white p-4 sm:p-5">
