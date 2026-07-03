@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import ListingsTripHydrator from "@/components/listings/ListingsTripHydrator";
+import ListingsScrollToResults from "@/components/listings/ListingsScrollToResults";
 import ListingsSearchLogger from "@/components/listings/ListingsSearchLogger";
 import ListingsHero from "@/components/listings/ListingsHero";
 import ListingsSeoContent from "@/components/listings/ListingsSeoContent";
@@ -88,6 +89,9 @@ export default async function ListingsPageView({ searchParams }) {
   return (
     <div className="min-h-screen bg-background">
       <ListingsSeoSchema seo={seoRecord} />
+      <Suspense fallback={null}>
+        <ListingsScrollToResults />
+      </Suspense>
       <Suspense fallback={null}>
         <ListingsTripHydrator />
       </Suspense>

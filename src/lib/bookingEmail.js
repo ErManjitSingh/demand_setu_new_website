@@ -452,6 +452,152 @@ ${buildMyBookingsLoginText(guest)}${
 Support: +91 8353056000`;
 }
 
+const ADMIN_BOOKING_NOTIFY_TO = "rahilsamyal6@gmail.com";
+
+function buildNewBookingAdminEmailHtml(booking) {
+  const { property, stay, guests, guest, pricing, rooms = [], paymentMethod } = booking;
+  const guestName =
+    guest?.fullName || `${guest?.firstName || ""} ${guest?.lastName || ""}`.trim() || "Guest";
+  const total = pricing?.payableTotal ?? pricing?.total ?? 0;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New booking from Demand Setu</title>
+</head>
+<body style="margin:0;padding:0;background:#f8f6f3;font-family:Arial,Helvetica,sans-serif;color:#1c1917;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8f6f3;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e7e5e4;">
+          <tr>
+            <td style="background:linear-gradient(135deg,#9a3412 0%,#ea580c 55%,#f97316 100%);padding:24px 28px;">
+              <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.82);">Demand Setu</p>
+              <h1 style="margin:0;font-size:24px;line-height:1.2;font-weight:800;color:#ffffff;">New booking from Demand Setu</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 28px;">
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#44403c;">A new property booking was placed on the website.</p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#fff7ed;border:1px solid #ffedd5;border-radius:14px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;color:#c2410c;">Property</p>
+                    <p style="margin:0 0 4px;font-size:18px;font-weight:800;color:#1c1917;">${escapeHtml(property?.title)}</p>
+                    <p style="margin:0;font-size:14px;color:#57534e;">${escapeHtml(property?.location)}${property?.region ? `, ${escapeHtml(property.region)}` : ""}</p>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:16px;background:#fafaf9;border:1px solid #e7e5e4;border-radius:14px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 10px;font-size:13px;font-weight:700;text-transform:uppercase;color:#78716c;">Stay</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Check-in:</strong> ${formatDateLabel(stay?.checkIn)}</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Check-out:</strong> ${formatDateLabel(stay?.checkOut)}</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Nights:</strong> ${stay?.nights || "—"}</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Guests:</strong> ${guests?.adults ?? "—"} adults, ${guests?.children ?? 0} children</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Rooms:</strong> ${booking.totalRooms ?? guests?.rooms ?? "—"}</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Payment:</strong> ${escapeHtml(paymentLabel(booking.paymentMethod || paymentMethod))}</p>
+                    <p style="margin:0;font-size:14px;color:#44403c;"><strong>Total:</strong> ${formatInr(total)}</p>
+                    ${booking.bookingId ? `<p style="margin:8px 0 0;font-size:14px;color:#44403c;"><strong>Booking ID:</strong> ${escapeHtml(booking.bookingId)}</p>` : ""}
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:16px;background:#fafaf9;border:1px solid #e7e5e4;border-radius:14px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 10px;font-size:13px;font-weight:700;text-transform:uppercase;color:#78716c;">Guest</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Name:</strong> ${escapeHtml(guestName)}</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Email:</strong> ${escapeHtml(guest?.email)}</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#44403c;"><strong>Mobile:</strong> ${escapeHtml(guest?.mobile)}</p>
+                    <p style="margin:0;font-size:14px;color:#44403c;"><strong>Country:</strong> ${escapeHtml(guest?.country)}</p>
+                  </td>
+                </tr>
+              </table>
+              ${
+                rooms.length
+                  ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:16px;">
+                      <tr><td style="padding:0 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;color:#78716c;">Selected rooms</td></tr>
+                      <tr><td><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${buildRoomsHtml(rooms)}</table></td></tr>
+                    </table>`
+                  : ""
+              }
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function buildNewBookingAdminEmailText(booking) {
+  const { property, stay, guests, guest, pricing, rooms = [], paymentMethod } = booking;
+  const guestName =
+    guest?.fullName || `${guest?.firstName || ""} ${guest?.lastName || ""}`.trim() || "Guest";
+  const total = pricing?.payableTotal ?? pricing?.total ?? 0;
+
+  const roomLines = rooms.length
+    ? rooms
+        .map(
+          (room) =>
+            `- ${room.roomName} (${room.mealPlanLabel || room.mealPlan}): ${formatInr(room.pricing?.total ?? room.total)}`
+        )
+        .join("\n")
+    : "";
+
+  return `New booking from Demand Setu
+
+Property: ${property?.title}
+Location: ${property?.location}
+Check-in: ${formatDateLabel(stay?.checkIn)}
+Check-out: ${formatDateLabel(stay?.checkOut)}
+Nights: ${stay?.nights}
+Guests: ${guests?.adults} adults, ${guests?.children || 0} children
+Rooms: ${booking.totalRooms ?? guests?.rooms}
+Payment: ${paymentLabel(booking.paymentMethod || paymentMethod)}
+Total: ${formatInr(total)}
+${booking.bookingId ? `Booking ID: ${booking.bookingId}\n` : ""}
+Guest: ${guestName}
+Email: ${guest?.email}
+Mobile: ${guest?.mobile}
+Country: ${guest?.country}
+${roomLines ? `\nRooms:\n${roomLines}` : ""}`;
+}
+
+export async function sendNewBookingAdminEmail(booking) {
+  const subject = "New booking from Demand Setu";
+  const html = buildNewBookingAdminEmailHtml(booking);
+  const text = buildNewBookingAdminEmailText(booking);
+
+  const response = await fetchWithTimeout(buildApiUrl("api/webmail/send-demand"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      to: ADMIN_BOOKING_NOTIFY_TO,
+      subject,
+      html,
+      text,
+      replyTo: booking?.guest?.email || "info@demandsetutours.com",
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message =
+      payload?.message ||
+      payload?.error ||
+      `Admin booking email failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  return { ok: true, data: payload };
+}
+
 export async function sendBookingConfirmationEmail(booking) {
   const to = String(booking?.guest?.email || "").trim();
   if (!to) {

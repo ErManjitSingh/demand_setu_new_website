@@ -13,6 +13,7 @@ import {
   persistTripSearch,
   validateTripSearch,
 } from "@/lib/bookingSearch";
+import { markListingsScrollIntent } from "@/components/listings/ListingsScrollToResults";
 
 function SearchBarClient({
   compact = false,
@@ -106,6 +107,7 @@ function SearchBarClient({
     setQuery(nextTrip.city || nextTrip.state);
     logSearch(listingsPage ? "listings-page-search" : "home-search", nextTrip);
     persistTripSearch(nextTrip);
+    markListingsScrollIntent();
 
     router.push(
       buildListingsSearchUrl({
@@ -115,7 +117,8 @@ function SearchBarClient({
         checkIn,
         checkOut,
         guests,
-      })
+      }),
+      { scroll: false }
     );
   };
 

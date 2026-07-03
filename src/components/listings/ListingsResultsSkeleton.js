@@ -7,7 +7,10 @@ import {
 
 export default function ListingsResultsSkeleton({ activeCategory = "all" }) {
   return (
-    <div className="mt-8 grid gap-8 lg:grid-cols-[280px_1fr] lg:gap-10">
+    <div
+      id="listings-results"
+      className="mt-8 scroll-mt-28 grid gap-8 lg:grid-cols-[280px_1fr] lg:gap-10"
+    >
       <div className="hidden lg:block">
         <div className="sticky top-24">
           <ListingsFilterSidebar activeCategory={activeCategory} />

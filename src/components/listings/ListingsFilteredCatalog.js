@@ -187,7 +187,7 @@ function ListingsFilteredCatalogClient({
   return (
     <div
       id="listings-results"
-      className="mt-8 grid gap-8 lg:grid-cols-[280px_1fr] lg:gap-10"
+      className="mt-8 scroll-mt-28 grid gap-8 lg:grid-cols-[280px_1fr] lg:gap-10"
     >
       <div className="hidden lg:block">
         <div className="sticky top-24">
@@ -305,7 +305,7 @@ function ListingsFilteredCatalogFallback() {
   return (
     <div
       id="listings-results"
-      className="mt-8 grid gap-8 lg:grid-cols-[280px_1fr] lg:gap-10"
+      className="mt-8 scroll-mt-28 grid gap-8 lg:grid-cols-[280px_1fr] lg:gap-10"
     >
       <div className="hidden h-[420px] animate-pulse rounded-3xl bg-stone-200 lg:block" />
       <div className="min-h-[320px] space-y-6">

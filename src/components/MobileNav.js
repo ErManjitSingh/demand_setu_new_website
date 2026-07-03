@@ -36,7 +36,7 @@ export default function MobileNav() {
   const searchParams = useSearchParams();
   const { openExplore, modal } = useCategoryExplore();
 
-  if (pathname?.startsWith("/property")) return null;
+  if (pathname?.startsWith("/property") || pathname?.endsWith("/book")) return null;
 
   return (
     <>

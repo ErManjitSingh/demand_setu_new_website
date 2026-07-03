@@ -34,6 +34,7 @@ import {
 import {
   mergeBookingForEmail,
   sendBookingConfirmationEmail,
+  sendNewBookingAdminEmail,
 } from "@/lib/bookingEmail";
 import { loadRoomSelection } from "@/lib/roomSelectionStorage";
 import {
@@ -246,6 +247,12 @@ function BookingCheckoutFormClient({
     } catch (emailError) {
       console.warn("[Checkout] Booking confirmation email failed:", emailError);
     }
+
+    try {
+      await sendNewBookingAdminEmail(bookingForNotifications);
+    } catch (emailError) {
+      console.warn("[Checkout] Admin booking notification email failed:", emailError);
+    }
   };
 
   const handleBook = async (paymentMethod = "pay_now") => {
@@ -400,7 +407,7 @@ function BookingCheckoutFormClient({
   }
 
   return (
-    <div className="grid gap-6 pb-36 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-start lg:gap-8 lg:pb-0">
+    <div className="grid gap-6 pb-44 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-start lg:gap-8 lg:pb-0">
       {/* Left — property card & guest form */}
       <div className="min-w-0 space-y-4">
         <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
@@ -937,7 +944,7 @@ function BookingActionButtons({ loading, onBook, className = "", fixed = false, 
 
   if (fixed) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-stone-200 bg-white/95 px-4 pt-3 shadow-[0_-8px_30px_rgba(28,25,23,0.12)] backdrop-blur-xl lg:hidden pb-[max(0.75rem,var(--safe-bottom))]">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-stone-200 bg-white/95 px-4 pt-3 shadow-[0_-8px_30px_rgba(28,25,23,0.12)] backdrop-blur-xl lg:hidden pb-[max(0.75rem,var(--safe-bottom))]">
         {total != null ? (
           <div className="mb-2.5 flex items-center justify-between">
             <span className="text-xs font-semibold text-muted">Total payable</span>

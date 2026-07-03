@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import PhoneNumberField from "@/components/booking/PhoneNumberField";
 import { submitStayLeadFromClient } from "@/lib/tourLeadClient";
+import {
+  DEFAULT_PHONE_COUNTRY_ISO,
+  parseStoredPhone,
+} from "@/lib/phoneCountryCodes";
 function formatGuestSummary({ adults, children, rooms }) {
   const parts = [`${adults} Adult${adults !== 1 ? "s" : ""}`];
   if (children > 0) parts.push(`${children} Child${children !== 1 ? "ren" : ""}`);
@@ -46,11 +51,12 @@ export default function BulkStayEnquiryForm({
   const [successMessage, setSuccessMessage] = useState("");
   const [form, setForm] = useState({
     name: "",
-    phone: "",
     email: "",
     location: defaultLocation,
     rooms: String(requestedRooms),
   });
+  const [phoneCountryIso, setPhoneCountryIso] = useState(DEFAULT_PHONE_COUNTRY_ISO);
+  const [phone, setPhone] = useState("");
 
   useEffect(() => setMounted(true), []);
 
@@ -68,6 +74,8 @@ export default function BulkStayEnquiryForm({
       rooms: String(requestedRooms),
       location: defaultLocation || prev.location,
     }));
+    setPhoneCountryIso(DEFAULT_PHONE_COUNTRY_ISO);
+    setPhone("");
     const frame = window.setTimeout(() => setVisible(true), 16);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -96,9 +104,14 @@ export default function BulkStayEnquiryForm({
 
     const rooms = Number.parseInt(form.rooms, 10) || requestedRooms;
     const destination = form.location.trim();
+    const phoneForApi = parseStoredPhone(phone, phoneCountryIso).local;
 
     if (!destination) {
       setSubmitError("Please enter a location");
+      return;
+    }
+    if (!phoneForApi) {
+      setSubmitError("Please enter your phone number");
       return;
     }
 
@@ -109,7 +122,7 @@ export default function BulkStayEnquiryForm({
       const result = await submitStayLeadFromClient({
         name: form.name.trim(),
         email: form.email.trim(),
-        mobile: form.phone.trim(),
+        mobile: phoneForApi,
         location: destination,
         destination,
         rooms: String(rooms),
@@ -199,16 +212,17 @@ export default function BulkStayEnquiryForm({
                 />
               </Field>
 
-              <Field label="Phone" required>
-                <input
-                  type="tel"
-                  required
-                  value={form.phone}
-                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                  className={inputClass}
-                  placeholder="+91"
-                />
-              </Field>
+              <PhoneNumberField
+                id="stay-enquiry-phone"
+                label="Phone"
+                required
+                national
+                country={phoneCountryIso}
+                onCountryChange={setPhoneCountryIso}
+                value={phone}
+                onChange={setPhone}
+                placeholder="Enter phone number"
+              />
 
               <Field label="Email" required>
                 <input

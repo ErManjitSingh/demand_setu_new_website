@@ -11,6 +11,13 @@ const PAYMENT_CONFIRM_TEMPLATE = {
   language: "en",
 };
 
+const WEBSITE_NEW_LEAD_TEMPLATE = {
+  templateName: "website_new_lead_template",
+  language: "en",
+};
+
+const ENQUIRY_NOTIFY_MOBILE = "9816661968";
+
 export function phoneToDigits(value) {
   return String(value || "").replace(/\D/g, "");
 }
@@ -75,5 +82,13 @@ export async function sendPaymentConfirmWhatsApp({ mobile }) {
   return sendWhatsAppTemplate({
     mobile,
     ...PAYMENT_CONFIRM_TEMPLATE,
+  });
+}
+
+/** Notifies admin on new website enquiry (package or stay). */
+export async function sendWebsiteNewLeadWhatsApp() {
+  return sendWhatsAppTemplate({
+    mobile: ENQUIRY_NOTIFY_MOBILE,
+    ...WEBSITE_NEW_LEAD_TEMPLATE,
   });
 }

@@ -14,17 +14,27 @@ export default function PhoneNumberField({
   value,
   onChange,
   placeholder = "Enter phone number",
+  national = false,
+  compact = false,
+  className = "",
 }) {
+  const variantClass = [
+    national ? "ds-phone-input--national" : "",
+    compact ? "ds-phone-input--compact" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div>
+    <div className={className}>
       <label htmlFor={id} className="block text-sm font-bold text-foreground">
         {label} {required ? <span className="text-brand">*</span> : null}
       </label>
       {hint ? <p className="mt-0.5 text-xs text-muted">{hint}</p> : null}
-      <div className="ds-phone-input mt-1.5">
+      <div className={`ds-phone-input mt-1.5 ${variantClass}`}>
         <PhoneInput
           id={id}
-          international
+          international={!national}
           countryCallingCodeEditable={false}
           defaultCountry={DEFAULT_PHONE_COUNTRY_ISO}
           country={country}

@@ -4,7 +4,12 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { getPackageImage } from "@/lib/tourPackages";
+import PhoneNumberField from "@/components/booking/PhoneNumberField";
 import { submitTourLeadFromClient } from "@/lib/tourLeadClient";
+import {
+  DEFAULT_PHONE_COUNTRY_ISO,
+  parseStoredPhone,
+} from "@/lib/phoneCountryCodes";
 import {
   TOUR_ENQUIRY_TYPES,
   buildEnquiryDestination,
@@ -34,13 +39,14 @@ export default function PackageEnquiryForm({
   const [successMessage, setSuccessMessage] = useState("");
   const [form, setForm] = useState({
     name: "",
-    phone: "",
     email: "",
     travelDate: "",
     travellers: "2",
     tourType: "private",
     ticketBooked: "no",
   });
+  const [phoneCountryIso, setPhoneCountryIso] = useState(DEFAULT_PHONE_COUNTRY_ISO);
+  const [phone, setPhone] = useState("");
 
   useEffect(() => setMounted(true), []);
 
@@ -57,13 +63,14 @@ export default function PackageEnquiryForm({
     setSuccessMessage("");
     setForm({
       name: "",
-      phone: "",
       email: "",
       travelDate: tourPackage.defaultTravelDate || "",
       travellers: String(tourPackage.defaultTravellers ?? 2),
       tourType: defaultTourTypeValue(tourPackage),
       ticketBooked: "no",
     });
+    setPhoneCountryIso(DEFAULT_PHONE_COUNTRY_ISO);
+    setPhone("");
     setVisible(true);
 
     if (embedded) return undefined;
@@ -90,6 +97,13 @@ export default function PackageEnquiryForm({
     if (submitting) return;
 
     const travellers = Number.parseInt(form.travellers, 10) || 2;
+    const phoneForApi = parseStoredPhone(phone, phoneCountryIso).local;
+
+    if (!phoneForApi) {
+      setSubmitError("Please enter your phone number");
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError("");
 
@@ -117,7 +131,7 @@ export default function PackageEnquiryForm({
       const result = await submitTourLeadFromClient({
         name: form.name.trim(),
         email: form.email.trim(),
-        mobile: form.phone.trim(),
+        mobile: phoneForApi,
         adults: String(travellers),
         city: packageCity,
         state: packageState,
@@ -246,16 +260,17 @@ export default function PackageEnquiryForm({
               />
             </Field>
 
-            <Field label="Phone" required>
-              <input
-                type="tel"
-                required
-                value={form.phone}
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                className={inputClass}
-                placeholder="+91"
-              />
-            </Field>
+            <PhoneNumberField
+              id="package-enquiry-phone"
+              label="Phone"
+              required
+              national
+              country={phoneCountryIso}
+              onCountryChange={setPhoneCountryIso}
+              value={phone}
+              onChange={setPhone}
+              placeholder="Enter phone number"
+            />
 
             <Field label="Email" required>
               <input

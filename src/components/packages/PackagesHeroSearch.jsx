@@ -5,7 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getCountrySearchOptions } from "@/lib/tourDestinations";
 import { getDefaultBookingDates } from "@/lib/dates";
 import PackageLocationCombobox from "@/components/packages/PackageLocationCombobox";
+import PhoneNumberField from "@/components/booking/PhoneNumberField";
 import { submitTourLeadFromClient } from "@/lib/tourLeadClient";
+import {
+  DEFAULT_PHONE_COUNTRY_ISO,
+  parseStoredPhone,
+} from "@/lib/phoneCountryCodes";
 import {
   TOUR_ENQUIRY_TYPES,
   buildEnquiryDestination,
@@ -131,7 +136,8 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
   const [adults, setAdults] = useState(2);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [mobile, setMobile] = useState("");
+  const [phoneCountryIso, setPhoneCountryIso] = useState(DEFAULT_PHONE_COUNTRY_ISO);
+  const [phone, setPhone] = useState("");
   const [ticketBooked, setTicketBooked] = useState("no");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -204,7 +210,8 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
       setError("Please enter your email");
       return;
     }
-    if (!mobile.trim()) {
+    const phoneForApi = parseStoredPhone(phone, phoneCountryIso).local;
+    if (!phoneForApi) {
       setError("Please enter your mobile number");
       return;
     }
@@ -229,7 +236,7 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
       const result = await submitTourLeadFromClient({
         name: name.trim(),
         email: email.trim(),
-        mobile: mobile.trim(),
+        mobile: phoneForApi,
         adults: String(adults),
         city: leadCity,
         state: leadState,
@@ -409,39 +416,41 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
                   </FormField>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <FormField label="Mobile">
-                    <input
-                      type="tel"
-                      required
-                      value={mobile}
-                      onChange={(e) => {
-                        setMobile(e.target.value);
-                        if (error) setError("");
-                      }}
-                      className={inputClass}
-                      placeholder="+91"
-                      autoComplete="tel"
-                    />
-                  </FormField>
+                <div className="grid grid-cols-2 gap-3">
+                  <PhoneNumberField
+                    id="hero-enquiry-phone"
+                    label="Mobile"
+                    required
+                    national
+                    compact
+                    className="min-w-0"
+                    country={phoneCountryIso}
+                    onCountryChange={setPhoneCountryIso}
+                    value={phone}
+                    onChange={(next) => {
+                      setPhone(next);
+                      if (error) setError("");
+                    }}
+                    placeholder="Phone number"
+                  />
 
-                  <FormField label="Number of adults">
-                    <div className="flex h-[42px] items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-3">
+                  <FormField label="Adults" className="min-w-0">
+                    <div className="flex h-[42px] items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-1.5">
                       <button
                         type="button"
                         onClick={() => setAdults((n) => Math.max(1, n - 1))}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 bg-white text-lg font-bold text-stone-600 transition hover:border-brand hover:text-brand"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white text-base font-bold text-stone-600 transition hover:border-brand hover:text-brand"
                         aria-label="Decrease adults"
                       >
                         −
                       </button>
-                      <span className="text-base font-bold text-stone-900">
-                        {adults} Adult{adults !== 1 ? "s" : ""}
+                      <span className="truncate px-1 text-sm font-bold text-stone-900">
+                        {adults}
                       </span>
                       <button
                         type="button"
                         onClick={() => setAdults((n) => Math.min(50, n + 1))}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 bg-white text-lg font-bold text-stone-600 transition hover:border-brand hover:text-brand"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white text-base font-bold text-stone-600 transition hover:border-brand hover:text-brand"
                         aria-label="Increase adults"
                       >
                         +
