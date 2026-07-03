@@ -416,7 +416,7 @@ export default function PackagesHeroSearch({ states = [], cities = [] }) {
                   </FormField>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <PhoneNumberField
                     id="hero-enquiry-phone"
                     label="Mobile"

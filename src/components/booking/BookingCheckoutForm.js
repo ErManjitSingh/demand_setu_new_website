@@ -161,6 +161,7 @@ function BookingCheckoutFormClient({
   const [bookError, setBookError] = useState("");
   const formWasEmptyRef = useRef(true);
   const formHintShownRef = useRef(false);
+  const guestFormRef = useRef(null);
 
   const fullName = `${firstName} ${lastName}`.trim();
   const fullMobile = String(phone || "").trim();
@@ -227,6 +228,28 @@ function BookingCheckoutFormClient({
       },
     });
 
+  const scrollToGuestForm = () => {
+    guestFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const focusFirstMissingGuestField = () => {
+    if (isLoggedIn) return;
+
+    const missingFields = [
+      { filled: Boolean(firstName.trim()), id: "firstName" },
+      { filled: Boolean(lastName.trim()), id: "lastName" },
+      { filled: Boolean(email.trim()), id: "email" },
+      { filled: Boolean(phoneForApi), id: "mobile" },
+      { filled: Boolean(password.trim()), id: "password" },
+    ];
+    const firstMissing = missingFields.find((field) => !field.filled);
+    if (!firstMissing) return;
+
+    window.setTimeout(() => {
+      document.getElementById(firstMissing.id)?.focus({ preventScroll: true });
+    }, 350);
+  };
+
   const sendBookingNotifications = async (bookingForNotifications, { paidOnline = false } = {}) => {
     try {
       await sendBookingWelcomeWhatsApp({ mobile: phoneForApi });
@@ -263,6 +286,12 @@ function BookingCheckoutFormClient({
       : hasGuestDetails && password.trim();
 
     if (!canSubmit) {
+      setBookError("Please complete all required details before continuing.");
+      if (!isLoggedIn) {
+        setShowFormHint(true);
+      }
+      scrollToGuestForm();
+      focusFirstMissingGuestField();
       return;
     }
 
@@ -477,7 +506,11 @@ function BookingCheckoutFormClient({
           </div>
         )}
 
-        <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm sm:p-7">
+        <div
+          ref={guestFormRef}
+          id="checkout-guest-form"
+          className="scroll-mt-24 rounded-xl border border-stone-200 bg-white p-5 shadow-sm sm:p-7"
+        >
           {hasInventorySelection ? (
             <div className="border-b border-stone-100 pb-6">
               <div className="flex items-center gap-2.5">
