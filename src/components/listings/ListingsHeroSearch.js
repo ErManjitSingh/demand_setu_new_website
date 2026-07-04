@@ -14,6 +14,7 @@ import { parseDateParam } from "@/lib/dates";
 import {
   DEFAULT_GUESTS,
   enrichListingsTripFromPath,
+  listingsSearchWillNavigate,
   loadTripSearch,
   parseGuestsFromParams,
   parseListingsUrl,
@@ -106,6 +107,12 @@ export default function ListingsHeroSearch({
   useEffect(() => {
     setIsSearching(false);
   }, [queryKey]);
+
+  useEffect(() => {
+    if (!isSearching) return undefined;
+    const timer = window.setTimeout(() => setIsSearching(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [isSearching]);
 
   useEffect(() => {
     const fromUrl = readTripFromUrl(pathname, searchParams);
@@ -217,10 +224,11 @@ export default function ListingsHeroSearch({
     setLocationKind(normalized.kind);
     setQuery(trip.city || trip.state || slugDisplayName(pathname, fromUrl.locationSlug));
     logSearch("listings-page-search", trip);
-    setIsSearching(true);
+    const willNavigate = listingsSearchWillNavigate(pathname, searchParams, trip);
     markListingsScrollIntent();
     persistTripSearch(trip, { router, pathname, searchParams });
     scrollToListingsResults();
+    setIsSearching(willNavigate);
   };
 
   return (

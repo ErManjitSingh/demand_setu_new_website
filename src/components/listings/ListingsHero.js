@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Playfair_Display } from "next/font/google";
 import ListingsHeroSearch from "@/components/listings/ListingsHeroSearch";
 import ListingsHeroBackground from "@/components/listings/ListingsHeroBackground";
+import { plainSeoText } from "@/lib/seoListingApi";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -32,8 +33,8 @@ export default function ListingsHero({
 }) {
   const heroTitle = seo?.heading || null;
   const heroSubtitle =
-    seo?.subHeading ||
-    description ||
+    plainSeoText(seo?.subHeading) ||
+    plainSeoText(description) ||
     "Hotels, villas & unique stays for unforgettable memories.";
   const heroImageAlt =
     seo?.images?.[0]?.name || seo?.focusKeyword || seo?.heading || "Destination stays";

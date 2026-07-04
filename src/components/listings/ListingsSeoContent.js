@@ -103,9 +103,9 @@ export default function ListingsSeoContent({ seo }) {
           </h2>
         )}
         {(seo.subHeading || seo.focusKeyword) && (
-          <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
-            {seo.subHeading || seo.focusKeyword}
-          </p>
+          <div className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
+            <SeoRichText content={seo.subHeading || seo.focusKeyword} />
+          </div>
         )}
       </header>
 

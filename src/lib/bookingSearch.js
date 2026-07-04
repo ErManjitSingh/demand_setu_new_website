@@ -295,6 +295,12 @@ export function buildListingsUrlFromParams(params, tripOverride = null) {
   const query = listingsQueryFromParams(source);
   appendBookingToParams(query, trip);
   query.delete("locationKind");
+  if (isListingsSlugPath(path)) {
+    query.delete("city");
+    query.delete("state");
+    query.delete("category");
+    query.delete("propertyType");
+  }
   const qs = query.toString();
   return qs ? `${path}?${qs}` : path;
 }
@@ -685,8 +691,12 @@ export function tripParamsNeedSync(searchParams, mergedTrip, pathname = "") {
       }
     }
     if (slug?.locationSlug) {
-      if (hasSearchParam(searchParams, "state") || hasSearchParam(searchParams, "city")) {
+      if (hasSearchParam(searchParams, "state")) {
         return true;
+      }
+      if (hasSearchParam(searchParams, "city")) {
+        const citySlug = toLocationSlug(String(searchParams.get("city") || "").trim());
+        if (citySlug && citySlug !== slug.locationSlug) return true;
       }
       if (tripLocationSlug(mergedTrip) !== slug.locationSlug) return true;
     }
@@ -746,4 +756,46 @@ export function buildListingsUrlPreservingFilters(searchParams, trip) {
       ? searchParams
       : new URLSearchParams(searchParams?.toString?.() || "");
   return buildListingsUrlFromParams(applyTripToParams(base, trip), trip);
+}
+
+/** Normalize listings page URL for comparing whether a search will change the route. */
+export function normalizeListingsSearchPageUrl(pathname, searchParams) {
+  const path = String(pathname || "").split("?")[0];
+  const params =
+    searchParams instanceof URLSearchParams
+      ? new URLSearchParams(searchParams.toString())
+      : new URLSearchParams(searchParams?.toString?.() || "");
+
+  if (isListingsSlugPath(path)) {
+    params.delete("city");
+    params.delete("state");
+    params.delete("locationKind");
+    params.delete("category");
+    params.delete("propertyType");
+  }
+
+  const keys = [...params.keys()].sort();
+  const normalized = new URLSearchParams();
+  for (const key of keys) {
+    const value = params.get(key);
+    if (value != null) normalized.set(key, value);
+  }
+
+  const qs = normalized.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
+export function listingsSearchWillNavigate(pathname, searchParams, trip) {
+  if (!isListingsSlugPath(pathname) && pathname !== "/listings") return false;
+
+  const params =
+    searchParams instanceof URLSearchParams
+      ? new URLSearchParams(searchParams.toString())
+      : new URLSearchParams(searchParams?.toString?.() || "");
+
+  const nextUrl = buildListingsUrlPreservingFilters(params, trip);
+  const [nextPath, nextQs = ""] = nextUrl.split("?");
+  const current = normalizeListingsSearchPageUrl(pathname, searchParams);
+  const next = normalizeListingsSearchPageUrl(nextPath, new URLSearchParams(nextQs));
+  return current !== next;
 }

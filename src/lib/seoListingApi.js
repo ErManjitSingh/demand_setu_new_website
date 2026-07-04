@@ -105,6 +105,16 @@ export function isHtmlContent(text) {
   return /<\/?[a-z][^>]*>/i.test(value);
 }
 
+/** Plain text for one-line UI (hero subtitles, meta fallbacks). */
+export function plainSeoText(text) {
+  const value = normalizeSeoRichText(text);
+  if (!value) return "";
+  return value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** Clean Quill HTML and normalize list markup for display. */
 export function prepareSeoHtml(html) {
   let value = normalizeSeoRichText(html);
