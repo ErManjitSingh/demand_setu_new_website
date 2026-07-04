@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import MobileNav from "@/components/MobileNav";
 import AppProviders from "@/components/providers/AppProviders";
 import NavigationProgress from "@/components/NavigationProgress";
+import SiteTracking, { GtmNoscript } from "@/components/SiteTracking";
 import { getSiteUrl } from "@/lib/siteConfig";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -57,6 +58,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${jakarta.variable} h-full`}>
       <body className="flex min-h-full flex-col antialiased">
+        <GtmNoscript />
+        <SiteTracking />
         <AppProviders>
           <NavigationProgress />
           <Header />
