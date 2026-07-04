@@ -23,7 +23,7 @@ import {
   sumCategorySelectedRooms,
 } from "@/lib/propertyInventory";
 import { getMinimumRoomsRequired } from "@/lib/guestOccupancy";
-import { getDefaultBookingDates } from "@/lib/dates";
+import { getDefaultListingsDirectUrlDates } from "@/lib/dates";
 import { useTripSearch } from "@/hooks/useTripSearch";
 const PropertyRoomSelectionContext = createContext(null);
 
@@ -82,7 +82,7 @@ export function PropertyRoomSelectionProvider({
     return next;
   }, []);
   const trip = useTripSearch(initialTrip);
-  const defaultDates = useMemo(() => getDefaultBookingDates(), []);
+  const defaultDates = useMemo(() => getDefaultListingsDirectUrlDates(), []);
 
   const checkIn = trip.checkIn || defaultDates.checkIn;
   const checkOut = trip.checkOut || defaultDates.checkOut;

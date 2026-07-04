@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   buildPropertyUrlPreservingTrip,
-  fillMissingBookingDefaults,
+  fillMissingListingsTripDefaults,
   loadTripSearch,
   mergeTripFromUrlAndSession,
   saveTripSearch,
@@ -56,7 +56,7 @@ function PropertyTripHydratorClient({
 
     const trip =
       (hasLocation || hasDates) && !hasDates
-        ? fillMissingBookingDefaults(merged)
+        ? fillMissingListingsTripDefaults(merged)
         : merged;
 
     if (session) {

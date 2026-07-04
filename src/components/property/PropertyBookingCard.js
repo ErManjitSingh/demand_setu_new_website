@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatGuestsRoomsLabel } from "@/components/booking/GuestsRoomsPicker";
 import BookingPriceBreakdown from "@/components/booking/BookingPriceBreakdown";
 import { formatPrice } from "@/lib/listings";
-import { formatShortDate, getDefaultBookingDates, nightsBetween } from "@/lib/dates";
+import { formatShortDate, getDefaultListingsDirectUrlDates, nightsBetween } from "@/lib/dates";
 import { useTripSearch } from "@/hooks/useTripSearch";
 import { usePropertyRoomSelection } from "@/contexts/PropertyRoomSelectionContext";
 import { buildBookUrl, normalizeGuests, persistTripSearch } from "@/lib/bookingSearch";
@@ -26,7 +26,7 @@ function PropertyBookingCardClient({
   const searchParams = useSearchParams();
   const roomSelection = usePropertyRoomSelection();
   const nightly = selectedRoomPrice ?? listing.price;
-  const defaultDates = useMemo(() => getDefaultBookingDates(), []);
+  const defaultDates = useMemo(() => getDefaultListingsDirectUrlDates(), []);
 
   const serverFallback = useMemo(
     () => ({

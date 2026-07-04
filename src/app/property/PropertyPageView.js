@@ -13,7 +13,7 @@ import PropertyStarRating from "@/components/property/PropertyStarRating";
 import PropertyLocationMap from "@/components/property/PropertyLocationMap";
 import SectionHeading from "@/components/SectionHeading";
 import { getListingsByCategory, SAMPLE_REVIEWS } from "@/lib/listings";
-import { parseTripFromSearchParams, serializeTripForClient } from "@/lib/bookingSearch";
+import { fillMissingListingsTripDefaults, hasSearchParam, parseTripFromSearchParams, serializeTripForClient } from "@/lib/bookingSearch";
 import {
   getPropertyRooms,
   getPropertyAmenityGroups,
@@ -75,7 +75,16 @@ export default async function PropertyPageView({ resolved, searchParams }) {
     ? String(hotel?.location?.city || listing.propertyCity || "").trim()
     : String(listing.location || "").split(",")[0]?.trim() || "";
 
-  const trip = parseTripFromSearchParams(query);
+  const tripParsed = parseTripFromSearchParams(query);
+  const hasUrlDates =
+    hasSearchParam(query, "checkIn") && hasSearchParam(query, "checkOut");
+  const trip = hasUrlDates
+    ? tripParsed
+    : fillMissingListingsTripDefaults({
+        ...tripParsed,
+        city: tripParsed.city || propertyCity,
+        state: tripParsed.state || propertyState,
+      });
   const initialTrip = serializeTripForClient({
     ...trip,
     category: trip.category !== "all" ? trip.category : listing.category,

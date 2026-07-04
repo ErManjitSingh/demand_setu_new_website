@@ -2,9 +2,10 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { parseDateParam } from "@/lib/dates";
+import { addDays, getDefaultListingsDirectUrlDates, parseDateParam } from "@/lib/dates";
 import {
   DEFAULT_GUESTS,
+  hasSearchParam,
   loadTripSearch,
   mergeTripFromUrlAndSession,
   normalizeGuests,
@@ -53,7 +54,8 @@ export function useTripSearch(serverFallback) {
     const session = mounted ? loadTripSearch() : null;
     const merged = mergeTripFromUrlAndSession(searchParams, session, pathname);
     const isPropertyPage =
-      isPropertySlugPath(pathname) && !String(pathname).endsWith("/book");
+      (isPropertySlugPath(pathname) && !String(pathname).endsWith("/book")) ||
+      /^\/property\/[^/]+$/.test(String(pathname || ""));
 
     let city = merged.city || "";
     let state = merged.state || "";
@@ -65,6 +67,23 @@ export function useTripSearch(serverFallback) {
       state = state || fbState;
     }
 
+    let checkIn = merged.checkIn || fallback.checkIn || null;
+    let checkOut = merged.checkOut || fallback.checkOut || null;
+
+    if (
+      isPropertyPage &&
+      !hasSearchParam(searchParams, "checkIn") &&
+      !hasSearchParam(searchParams, "checkOut") &&
+      (!checkIn || !checkOut)
+    ) {
+      const defaults = getDefaultListingsDirectUrlDates();
+      checkIn = checkIn || defaults.checkIn;
+      checkOut = checkOut || defaults.checkOut;
+      if (!checkOut || checkOut <= checkIn) {
+        checkOut = addDays(checkIn, 1);
+      }
+    }
+
     return {
       category: merged.category || fallback.category || "all",
       city,
@@ -72,8 +91,8 @@ export function useTripSearch(serverFallback) {
       locationKind:
         merged.locationKind ||
         (state && !city ? "state" : city ? "city" : null),
-      checkIn: merged.checkIn || fallback.checkIn || null,
-      checkOut: merged.checkOut || fallback.checkOut || null,
+      checkIn,
+      checkOut,
       guests: normalizeGuests(merged.guests || fallback.guests || DEFAULT_GUESTS),
       locationLabel: city || state || "",
     };
